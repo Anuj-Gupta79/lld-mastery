@@ -1,11 +1,18 @@
 package com.lld.oop;
 
-public class ClassAndObjects {
+// LEARNING : Creating classes and objects in Java
+public class ClassesAndObjectsDemo {
+
+    // LEARNING : Always use private access modifier for class attributes to
+    // encapsulate data and provide controlled access through public methods
+    // (getters and setters).
     private String brand;
     private String color;
     private int speed;
 
-    public ClassAndObjects(String brand, String color, int speed) {
+    // LEARNING : Constructor to initialize the attributes of the class when an
+    // object is created.
+    public ClassesAndObjectsDemo(String brand, String color, int speed) {
         this.brand = brand;
         this.color = color;
         this.speed = speed;
@@ -18,6 +25,8 @@ public class ClassAndObjects {
     }
 
     public void brake() {
+        // LEARNING : Implementing a simple braking mechanism that reduces speed by 10
+        // units, ensuring it doesn't go below 0.
         if (speed >= 10) {
             speed -= 10;
         } else {
@@ -40,11 +49,11 @@ public class ClassAndObjects {
     }
 
     public static void main(String[] args) {
-        ClassAndObjects car1 = new ClassAndObjects("Toyota", "Red", 0);
+        ClassesAndObjectsDemo car1 = new ClassesAndObjectsDemo("Toyota", "Red", 0);
         car1.accelerate();
         car1.brake();
 
-        ClassAndObjects car2 = new ClassAndObjects("Honda", "Blue", 20);
+        ClassesAndObjectsDemo car2 = new ClassesAndObjectsDemo("Honda", "Blue", 20);
         car2.accelerate();
         car2.brake();
     }
