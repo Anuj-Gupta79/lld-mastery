@@ -1,4 +1,4 @@
-package com.lld.oop;
+package com.lld.oops;
 
 // LEARNING : Inheritance is a fundamental principle of object-oriented programming that allows a new class (called a subclass or child class) to inherit properties and behaviors (fields and methods) from an existing class (called a superclass or parent class).
 class Vehicle {

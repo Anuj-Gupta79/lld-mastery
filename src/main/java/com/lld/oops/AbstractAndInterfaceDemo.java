@@ -1,4 +1,4 @@
-package com.lld.oop;
+package com.lld.oops;
 
 abstract class LivingBeing {
     public abstract void move();

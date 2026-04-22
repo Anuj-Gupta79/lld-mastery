@@ -1,4 +1,4 @@
-package com.lld.oop;
+package com.lld.oops;
 
 // LEARNING : Creating classes and objects in Java
 public class ClassesAndObjectsDemo {

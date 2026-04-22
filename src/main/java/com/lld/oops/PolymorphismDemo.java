@@ -1,4 +1,4 @@
-package com.lld.oop;
+package com.lld.oops;
 
 class LivingBeing {
     public void move() {

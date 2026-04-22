@@ -1,4 +1,4 @@
-package com.lld.oop;
+package com.lld.oops;
 
 // LEARNING : Encapsulation is a fundamental principle of object-oriented programming that promotes data hiding and abstraction. 
 // It allows us to restrict direct access to an object's internal state and only expose a controlled interface through public methods (getters and setters). 
