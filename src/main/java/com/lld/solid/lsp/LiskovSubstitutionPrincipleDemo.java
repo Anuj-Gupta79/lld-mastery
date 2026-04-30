@@ -83,6 +83,11 @@ class SquareFix extends ShapeFix {
     }
 }
 
+// LSP says: "Objects of a superclass should be replaceable with objects of a
+// subclass without affecting the correctness of the program." In this example,
+// SquareViolation cannot be substituted for RectangleViolation without breaking
+// the expected behavior, while SquareFix can be substituted for ShapeFix
+// without any issues.
 public class LiskovSubstitutionPrincipleDemo {
 
     static void testRectangleArea(RectangleViolation rectangle) {

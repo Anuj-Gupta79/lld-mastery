@@ -1,5 +1,6 @@
 package com.lld.solid.ocp;
 
+// OCP says: "Software entities (classes, modules, functions, etc.) should be open for extension but closed for modification."
 public class DiscountDemo {
 
     public static void main(String[] args) {

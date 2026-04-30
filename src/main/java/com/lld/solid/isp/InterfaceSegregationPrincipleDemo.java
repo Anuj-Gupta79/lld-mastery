@@ -154,6 +154,15 @@ class ManagerFix implements Workable, Eatable, Sleepable, Manageable, ContractSi
     }
 }
 
+// ISP says: Clients should not be forced to depend on interfaces they do not
+// use. In the violation example, both InternViolation and ManagerViolation are
+// forced to implement methods that are not relevant to their roles, leading to
+// a violation of the Interface Segregation Principle. In the fix example, we
+// have created separate interfaces for different responsibilities, allowing the
+// InternFix and ManagerFix classes to implement only the interfaces that are
+// relevant to their roles, adhering to the ISP and promoting better code
+// organization and maintainability.
+
 // LEARNINGS:
 // 1. The Interface Segregation Principle (ISP) states that clients should not
 // be forced to depend on interfaces they do not use. It promotes the idea of
