@@ -3,3 +3,4 @@ build/
 *.class
 .vscode/
 .DS_Store
+bin/**/*.md
