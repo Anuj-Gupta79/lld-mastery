@@ -12,15 +12,15 @@ interface TreeType {
 
     String getTexture();
 
-    // LEARNING: The render method allows us to render the tree using its intrinsic state and extrinsic state without needing to know the specific type of tree.
+    // LEARNING: render() uses intrinsic state (name/color/texture) + extrinsic
+    // state (x, y, size) passed at call time.
     default void render(int x, int y, int size) {
         System.out.println("Rendering a " + getName() + " with color " + getColor() + " and texture " + getTexture()
                 + " at position (" + x + ", " + y + ") with size " + size);
-    };
+    }
 }
 
 class PineTreeType implements TreeType {
-
     @Override
     public String getName() {
         return "Pine Tree";
@@ -38,7 +38,6 @@ class PineTreeType implements TreeType {
 }
 
 class OakTreeType implements TreeType {
-
     @Override
     public String getName() {
         return "Oak Tree";
@@ -55,7 +54,8 @@ class OakTreeType implements TreeType {
     }
 }
 
-// LEARNING: TreeFactory is the flyweight factory that creates and manages flyweight objects (TreeType instances).It ensures that flyweight objects are shared properly.
+// LEARNING: Factory caches shared TreeType instances — new object created only
+// on cache miss.
 class TreeFactory {
     private static Map<String, TreeType> treeTypes = new HashMap<>();
 
@@ -69,6 +69,8 @@ class TreeFactory {
                 case "Oak":
                     treeType = new OakTreeType();
                     break;
+                default:
+                    throw new IllegalArgumentException("Unknown tree type: " + name);
             }
             treeTypes.put(name, treeType);
         }
@@ -76,13 +78,13 @@ class TreeFactory {
     }
 }
 
-// LEARNING: Flyweight object — contains intrinsic state (shared data) and
-// extrinsic state (unique data).
+// LEARNING: Tree holds extrinsic state (x, y, size); intrinsic state lives in
+// shared TreeType.
+// WHY: Thousands of trees share one TreeType instance instead of duplicating
+// name/color/texture.
 class Tree {
     private TreeType type;
-    private int x;
-    private int y;
-    private int size;
+    private int x, y, size;
 
     public Tree(TreeType type, int x, int y, int size) {
         this.type = type;
@@ -101,8 +103,7 @@ class Forest {
 
     public void plantTree(String name, int x, int y, int size) {
         TreeType type = TreeFactory.getTreeType(name);
-        Tree tree = new Tree(type, x, y, size);
-        forest.add(tree);
+        forest.add(new Tree(type, x, y, size));
     }
 
     public void renderAll() {
@@ -122,11 +123,10 @@ public class FlyWeightDemo {
 
         forest.renderAll();
 
-        // LEARNING: The TreeFactory ensures that only one instance of each TreeType is created and shared among all trees of that type.
-        // WHY? This is the core of the Flyweight pattern — sharing common data to save memory. 
+        // LEARNING: Same name returns same cached instance — reference equality proves
+        // sharing.
         TreeType pine1 = TreeFactory.getTreeType("Pine");
         TreeType pine2 = TreeFactory.getTreeType("Pine");
         System.out.println("Are pine1 and pine2 the same instance? " + (pine1 == pine2));
-
     }
 }

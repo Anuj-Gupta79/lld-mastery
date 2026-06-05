@@ -1,7 +1,7 @@
 package com.lld.patterns.structural.bridge;
 
-// LEARNING: Implementor interface — defines the "how to send" contract
-// WHY: Declared as interface so abstraction side never depends on a concrete channel
+// LEARNING: Implementor interface — defines the "how to send" contract.
+// WHY: Abstraction side depends on this interface, never on a concrete channel.
 interface NotificationChannel {
     void send(String message);
 }
@@ -34,10 +34,9 @@ class WhatsAppChannel implements NotificationChannel {
     }
 }
 
-// LEARNING: Abstraction class — defines the "what to send" contract and holds a
-// reference to the Implementor
-// WHY: Abstraction is decoupled from the implementation, allowing them to vary
-// independently.
+// LEARNING: Abstraction holds a reference to Implementor — this is the bridge.
+// WHY: Notification type (what) and channel (how) vary independently; no class
+// explosion.
 abstract class Notification {
     protected NotificationChannel channel;
 
@@ -71,15 +70,10 @@ class ReminderNotification extends Notification {
 }
 
 public class BridgeDemo {
-
     public static void main(String[] args) {
-        NotificationChannel emailChannel = new EmailChannel();
-        NotificationChannel pushChannel = new PushChannel();
-        NotificationChannel whatsappChannel = new WhatsAppChannel();
-
-        Notification alertEmail = new AlertNotification(emailChannel);
-        Notification reminderPush = new ReminderNotification(pushChannel);
-        Notification alertWhatsApp = new AlertNotification(whatsappChannel);
+        Notification alertEmail = new AlertNotification(new EmailChannel());
+        Notification reminderPush = new ReminderNotification(new PushChannel());
+        Notification alertWhatsApp = new AlertNotification(new WhatsAppChannel());
 
         alertEmail.send("This is an alert email!");
         reminderPush.send("This is a reminder push notification.");

@@ -11,8 +11,10 @@ class PlainText implements TextFormatter {
     }
 }
 
-// LEARNING: The TextDecorator class implements the TextFormatter interface and contains a reference to a TextFormatter object.
-// Why? This will keep the decorator in chain, else chain will break and we won't be able to apply multiple decorators in sequence.
+// LEARNING: Abstract decorator implements the interface and holds a reference
+// to another TextFormatter.
+// WHY: The wrapped reference keeps the chain intact — each decorator delegates
+// to the one below it.
 abstract class TextDecorator implements TextFormatter {
     protected TextFormatter decoratedText;
 
@@ -59,17 +61,15 @@ class ExclaimDecorator extends TextDecorator {
     }
 }
 
-// LEARNING: Decorator pattern allows us to add behavior to objects dynamically without affecting other objects of the same class.
-// WHY? It promotes code reusability and flexibility by allowing us to create new functionality by combining existing decorators without modifying the original classes.
 public class DecoratorDemo {
     public static void main(String[] args) {
-        // LEARNING: Order of decorators matters as they are applied in sequence.
-        TextFormatter plainText = new PlainText();
-        TextFormatter upperCaseText = new UpperCaseDecorator(plainText);
-        TextFormatter trimmedText = new TrimDecorator(upperCaseText);
-        TextFormatter exclaimText = new ExclaimDecorator(trimmedText);
+        // LEARNING: Decorators wrap inward — outermost runs first, delegates down,
+        // result bubbles back up.
+        TextFormatter pipeline = new ExclaimDecorator(
+                new TrimDecorator(
+                        new UpperCaseDecorator(
+                                new PlainText())));
 
-        String result = exclaimText.format("  hello world  ");
-        System.out.println(result);
+        System.out.println(pipeline.format("  hello world  "));
     }
 }

@@ -52,15 +52,19 @@ class StreamingPlayer {
     }
 }
 
-// LEARNING: HomeTheater is the facade class which coordinates subsystems and  hides their complexity from the client.
+// LEARNING: Facade coordinates multiple subsystems behind a single simplified
+// interface.
+// WHY: Client calls one method instead of orchestrating 6-7 subsystem calls in
+// the right order.
 class HomeTheater {
     private Lights lights;
     private SoundSystem soundSystem;
     private Projector projector;
     private StreamingPlayer streamingPlayer;
 
-    // LEARNING: We are passing all subsystem rather than creating them inside facade.
-    // WHY? This will follow the DIP, further we can create factory to handle it more elegantly.
+    // LEARNING: Subsystems injected, not created inside — follows DIP.
+    // WHY: Facade stays testable and swappable; a factory can handle wiring if
+    // needed.
     public HomeTheater(Lights lights, SoundSystem soundSystem, Projector projector, StreamingPlayer streamingPlayer) {
         this.lights = lights;
         this.soundSystem = soundSystem;
@@ -68,7 +72,6 @@ class HomeTheater {
         this.streamingPlayer = streamingPlayer;
     }
 
-    // LEARNING: Single call to facade, hides all complexity of subsystem.
     public void watchMovie(String movie) {
         System.out.println("Get ready to watch a movie...");
         lights.dim();
@@ -89,15 +92,11 @@ class HomeTheater {
     }
 }
 
-// LEARNING: Facade pattern says that we can provide a simplified interface to a complex subsystem.
 public class FacadeDemo {
-
     public static void main(String[] args) {
-        Lights lights = new Lights();
-        SoundSystem soundSystem = new SoundSystem();
-        Projector projector = new Projector();
-        StreamingPlayer streamingPlayer = new StreamingPlayer();
-        HomeTheater homeTheater = new HomeTheater(lights, soundSystem, projector, streamingPlayer);
+        HomeTheater homeTheater = new HomeTheater(
+                new Lights(), new SoundSystem(), new Projector(), new StreamingPlayer());
+
         homeTheater.watchMovie("Inception");
         System.out.println("\n--- Movie is playing ---\n");
         homeTheater.endMovie();

@@ -3,8 +3,8 @@ package com.lld.patterns.structural.composite;
 import java.util.ArrayList;
 import java.util.List;
 
-// LEARNING: FileSystemComponent is the interface that defines the common operations for both File and Folder.
-// WHY? It allows us to treat individual files and folders uniformly, enabling us to build a tree structure of files and folders without worrying about their specific types.
+// LEARNING: Component interface — defines operations for both leaf (File) and composite (Folder).
+// WHY: Lets client treat individual objects and compositions uniformly — no instanceof needed.
 interface FileSystemComponent {
     String getName();
 
@@ -56,8 +56,10 @@ class Folder implements FileSystemComponent {
         return name;
     }
 
-    // LEARNING: We can recursively calculate the total size.
-    // WHY? same interface on File and Folder means recursion just works..
+    // LEARNING: Recursion works here because File and Folder share the same
+    // interface.
+    // WHY: Folder delegates to each child's getSize() — no type checking, tree
+    // depth doesn't matter.
     @Override
     public long getSize() {
         long totalSize = 0;
@@ -67,8 +69,6 @@ class Folder implements FileSystemComponent {
         return totalSize;
     }
 
-    // LEARNING: We can recursively display the folder structure.
-    // WHY? Shared interface means each child handles its own display — no instanceof needed.
     @Override
     public void display(String indent) {
         System.out.println(indent + "Folder: " + name);
@@ -79,18 +79,19 @@ class Folder implements FileSystemComponent {
 }
 
 public class CompositeDemo {
-
     public static void main(String[] args) {
         File resume = new File("resume.pdf", 120);
         File notes = new File("notes.txt", 30);
 
         File lld = new File("lld.java", 80);
         File dsa = new File("dsa.java", 60);
+
+        // WHY: Declared as Folder (not FileSystemComponent) to access addComponent
+        // during construction.
         Folder projects = new Folder("Projects");
         projects.addComponent(lld);
         projects.addComponent(dsa);
 
-        // WHY? Declared as Folder (not FileSystemComponent) to access addComponent during construction.
         Folder rootFolder = new Folder("Root");
         rootFolder.addComponent(resume);
         rootFolder.addComponent(notes);

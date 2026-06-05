@@ -25,11 +25,9 @@ class CSVReport implements Report {
     }
 }
 
-// LEARNING: Factory class that creates instances of different report types
-// based on input parameters
-// WHY: This allows for loose coupling between the client code and the concrete
-// report classes, making it easier to add new report types without modifying
-// existing code.
+// LEARNING: Factory centralizes object creation behind a static method.
+// WHY: Caller depends on Report interface, not on
+// PDFReport/ExcelReport/CSVReport — loose coupling.
 class ReportFactory {
     public static Report createReport(String type) {
         switch (type.toLowerCase()) {
@@ -45,17 +43,6 @@ class ReportFactory {
     }
 }
 
-// LEARNING: Factory pattern is a creational design pattern that provides an
-// interface for creating objects in a superclass, but allows subclasses to
-// alter the type of objects that will be created.
-// Why use Factory pattern?
-// 1. To encapsulate the object creation process, allowing for more flexible and
-// maintainable code.
-// 2. To promote loose coupling between the client code and the concrete
-// classes, making it easier to add new types of objects without modifying
-// existing code.
-// 3. To provide a single point of control for object creation, which can
-// simplify code and improve readability.
 public class FactoryDemo {
     public static void main(String[] args) {
         Report pdfReport = ReportFactory.createReport("pdf");
