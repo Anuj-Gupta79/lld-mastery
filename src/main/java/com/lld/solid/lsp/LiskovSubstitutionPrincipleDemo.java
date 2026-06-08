@@ -24,10 +24,10 @@ class RectangleViolation extends ShapeViolation {
     }
 }
 
-// Violation: Why? Because SquareViolation does not adhere to the expected
-// behavior of RectangleViolation. It overrides the setWidth and setHeight
-// methods in a way that breaks the expected behavior of a rectangle, which can
-// lead to incorrect area calculations when treated as a RectangleViolation.
+// LEARNING: A subclass must preserve the expectations established by its
+// parent.
+// WHY: If replacing the parent with the child changes behaviour, LSP is
+// violated.
 class SquareViolation extends RectangleViolation {
     private double side;
 
@@ -47,10 +47,9 @@ class SquareViolation extends RectangleViolation {
     }
 }
 
-// Fix: To adhere to the Liskov Substitution Principle, we can create a common
-// abstract class or interface for shapes that defines the area method, and then
-// have both RectangleFix and SquareFix implement this interface without
-// overriding methods in a way that breaks expected behavior.
+// LEARNING: Model abstractions around common behaviour, not forced inheritance.
+// WHY: Square and Rectangle both have area(), but neither should pretend to be
+// the other.
 abstract class ShapeFix {
     abstract double area();
 }
@@ -83,16 +82,12 @@ class SquareFix extends ShapeFix {
     }
 }
 
-// LSP says: "Objects of a superclass should be replaceable with objects of a
-// subclass without affecting the correctness of the program." In this example,
-// SquareViolation cannot be substituted for RectangleViolation without breaking
-// the expected behavior, while SquareFix can be substituted for ShapeFix
-// without any issues.
 public class LiskovSubstitutionPrincipleDemo {
 
     static void testRectangleArea(RectangleViolation rectangle) {
         rectangle.setWidth(10);
         rectangle.setHeight(5);
+
         System.out.println("Rectangle Area: " + rectangle.area());
     }
 
@@ -100,21 +95,16 @@ public class LiskovSubstitutionPrincipleDemo {
         RectangleViolation rectangle = new RectangleViolation();
         testRectangleArea(rectangle);
 
-        // LEARNING: This will cause unexpected behavior because SquareViolation does
-        // not adhere to the expected behavior of RectangleViolation.
-        // WHY: LSP requires subclasses to be substitutable for their parent without
-        // changing program correctness. Square breaks Rectangle's contract silently.
+        // LEARNING: SquareViolation cannot safely replace RectangleViolation.
+        // WHY: Rectangle expects width and height to vary independently.
         SquareViolation square = new SquareViolation();
         testRectangleArea(square);
-
     }
 
     static void demonstrateFix() {
         RectangleFix rectangle = new RectangleFix(10, 5);
         System.out.println("Rectangle Area: " + rectangle.area());
 
-        // LEARNING: This works correctly because SquareFix adheres to the expected
-        // behavior of ShapeFix.
         SquareFix square = new SquareFix(5);
         System.out.println("Square Area: " + square.area());
     }

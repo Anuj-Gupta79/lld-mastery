@@ -45,31 +45,19 @@ class Employee {
         this.hoursWorked = hoursWorked;
     }
 
-    // LEARNING: Single Responsibility Principle (SRP) - A class should have only
-    // one reason to change.
-    // EARLIER: Employee class had multiple responsibilities - calculating salary,
-    // generating report, and saving to database.
-    // NOW: Each responsibility is moved to its own class, adhering to SRP.
-    // This code is commented out to demonstrate the refactoring for SRP. The
-    // responsibilities are now handled by separate classes.
+    // LEARNING: Employee now represents only employee data.
+    // WHY: Changes to salary, reporting, or persistence should not force changes
+    // here.
 
-    // public int calculateSalary() {
-    // return basedSalary + (hoursWorked * 2000);
-    // }
-
-    // public String generateReport() {
-    // return "Employee Report: " + name + " (ID: " + id + ") - Pay: " +
-    // calculateSalary();
-    // }
-
-    // public void saveToDatabase() {
-    // System.out.println("Saving employee " + name + " to the database.");
-    // }
+    // Earlier SRP violation:
+    // calculateSalary()
+    // generateReport()
+    // saveToDatabase()
 }
 
 class EmployeeReport {
-    // LEARNING: Give EmployeeReport class the single responsibility of generating
-    // reports for employees.
+
+    // LEARNING: Responsible only for report generation.
     public String generateReport(Employee employee, int salary) {
         return "Employee Report: " + employee.getName() + " (ID: " + employee.getId() + ") - Pay: " + salary;
     }
@@ -77,8 +65,7 @@ class EmployeeReport {
 
 class EmployeeRepository {
 
-    // LEARNING: Give EmployeeRepository class the single responsibility of saving
-    // employee data to the database.
+    // LEARNING: Responsible only for persistence operations.
     public void saveToDatabase(Employee employee) {
         System.out.println("Saving employee " + employee.getName() + " to the database.");
     }
@@ -86,8 +73,7 @@ class EmployeeRepository {
 
 class SalaryCalculator {
 
-    // LEARNING: Give SalaryCalculator class the single responsibility of
-    // calculating employee salaries.
+    // LEARNING: Responsible only for salary calculation.
     public int calculateSalary(Employee employee) {
         return employee.getBasedSalary() + (employee.getHoursWorked() * 2000);
     }
@@ -95,7 +81,9 @@ class SalaryCalculator {
 
 public class SingleResponsibilityPrincipleDemo {
     public static void main(String[] args) {
+
         Employee employee = new Employee(1, "John Doe", 50000, 10);
+
         SalaryCalculator salaryCalculator = new SalaryCalculator();
         EmployeeReport employeeReport = new EmployeeReport();
         EmployeeRepository employeeRepository = new EmployeeRepository();
@@ -105,14 +93,9 @@ public class SingleResponsibilityPrincipleDemo {
         System.out.println("Employee ID: " + employee.getId());
         System.out.println("Employee Name: " + employee.getName());
 
-        // Below code is voilating SRP as Employee class is doing multiple things -
-        // calculating salary, generating report, and saving to database.
-        // System.out.println("Employee Salary: " + employee.calculateSalary());
-        // System.out.println(employee.generateReport());
-        // employee.saveToDatabase();
+        // WHY: Employee should not calculate salary, generate reports,
+        // and save itself to the database.
 
-        // LEARNING: Now, each responsibility is handled by separate classes, adhering
-        // to SRP.
         System.out.println("Employee Salary: " + salary);
         System.out.println(employeeReport.generateReport(employee, salary));
         employeeRepository.saveToDatabase(employee);
