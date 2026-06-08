@@ -21,12 +21,9 @@ class Computer {
         count++;
     }
 
-    // LEARNING: Static nested classes are associated with the outer class and can
-    // access its static members, but they cannot access non-static members
-    // directly. They are instantiated without needing an instance of the outer
-    // class. In contrast, inner classes are associated with an instance of the
-    // outer class and can access both static and non-static members of the outer
-    // class. They require an instance of the outer class to be instantiated.
+    // LEARNING: Static nested class — tied to the outer class, not an instance.
+    // WHY: Can access outer static members (os, count) but not instance fields
+    // (brand, price).
     static class Processor {
         private String model;
         private int cores;
@@ -42,12 +39,9 @@ class Computer {
         }
     }
 
-    // LEARNING: Inner classes are non-static nested classes that are associated
-    // with an instance of the outer class. They can access both static and
-    // non-static members of the outer class. To instantiate an inner class, we need
-    // an instance of the outer class. In this example, the Battery class is an
-    // inner class of the Computer class, and it can access the brand and os
-    // attributes of the Computer class when displaying battery information.
+    // LEARNING: Inner class — tied to a specific Computer instance.
+    // WHY: Can access both static (os) and instance (brand) members of the outer
+    // class.
     class Battery {
         private int capacity;
 
@@ -56,31 +50,21 @@ class Computer {
         }
 
         public void displayBatteryInfo() {
-            System.out
-                    .println("Battery Capacity: " + capacity + "mAh, Computer Brand: " + brand + ", OS: " + os);
+            System.out.println("Battery Capacity: " + capacity + "mAh, Brand: " + brand + ", OS: " + os);
         }
     }
 
-    // LEARNING: Local inner classes are defined within a method and can only be
-    // accessed within that method. They can access final or effectively final
-    // variables from the enclosing method. In this example, the Summary class is a
-    // local inner class defined within the describeComputer() method, and it can
-    // access the brand and price variables of the Computer class to display a
-    // summary of the computer's information. Local inner classes are useful for
-    // encapsulating helper classes that are only relevant within the context of a
-    // specific method, and they help to keep the code organized and maintainable by
-    // limiting the scope of the inner class to where it is needed.
+    // LEARNING: Local inner class — defined inside a method, scoped to it.
+    // WHY: One-off helper logic that belongs to a single method, not the whole
+    // class.
     public void describeComputer() {
-
         class Summary {
             void displaySummary() {
-                System.out.println("Computer Brand: " + brand + ", Price: $" + price);
+                System.out.println("Brand: " + brand + ", Price: $" + price);
             }
         }
-
         new Summary().displaySummary();
     }
-
 }
 
 public class NestedAndInnerClassDemo {
@@ -95,25 +79,16 @@ public class NestedAndInnerClassDemo {
         Computer.Battery battery = computer.new Battery(5000);
         battery.displayBatteryInfo();
 
-        // LEARNING: Anonymous inner classes are a way to create a one-time use class
-        // that implements an interface or extends a class without having to explicitly
-        // define a new class. They are often used for event handling or when we need to
-        // provide a specific implementation of an interface or class without the need
-        // for a separate named class. In this example, we are creating an anonymous
-        // inner class that implements the Bootable interface and provides an
-        // implementation for the boot() method. This allows us to define the behavior
-        // of the boot() method without having to create a separate named class for it.
-        // Anonymous inner classes can be useful for simplifying code and reducing the
-        // number of classes in a program, but they can also make code harder to read if
-        // overused or used in complex scenarios. It is important to use anonymous inner
-        // classes judiciously and consider readability when deciding whether to use
-        // them in your code.
+        // LEARNING: Anonymous inner class — one-shot interface implementation, no named
+        // class needed.
+        // WHY: Avoids creating a separate class for single-use behaviour like
+        // OS-specific boot logic.
         Bootable windowBootable = new Bootable() {
             String os = "Windows";
 
             @Override
             public void boot() {
-                System.out.println("Booting the computer with " + os + "...");
+                System.out.println("Booting with " + os + "...");
             }
         };
 
@@ -122,12 +97,11 @@ public class NestedAndInnerClassDemo {
 
             @Override
             public void boot() {
-                System.out.println("Booting the computer with " + os + "...");
+                System.out.println("Booting with " + os + "...");
             }
         };
 
         windowBootable.boot();
         linuxBootable.boot();
     }
-
 }
