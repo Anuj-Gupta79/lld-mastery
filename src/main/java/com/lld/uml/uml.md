@@ -77,7 +77,7 @@ classDiagram
         +sortData(data: List) List
     }
 
-    SortContext o-- SortStrategy
+    SortContext --o SortStrategy
     BubbleSort ..|> SortStrategy
     QuickSort ..|> SortStrategy
     MergeSort ..|> SortStrategy
