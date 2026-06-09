@@ -1,0 +1,11 @@
+@startuml
+
+participant Client
+participant Subject
+participant Observer
+
+Client -> Subject: setState()
+Subject -> Subject: notifyObservers()
+Subject -> Observer: update()
+
+@enduml
