@@ -54,6 +54,35 @@ class MyClass {
 - No labels needed on standard relationships — arrow type is self-explanatory
 - Field = at least Aggregation | Method parameter = Association
 
+### Visual Representation
+
+```mermaid
+classDiagram
+    class SortStrategy {
+        <<interface>>
+        +sort(data: List) List
+    }
+    class BubbleSort {
+        +sort(data: List) List
+    }
+    class QuickSort {
+        +sort(data: List) List
+    }
+    class MergeSort {
+        +sort(data: List) List
+    }
+    class SortContext {
+        -strategy: SortStrategy
+        +setStrategy(strategy: SortStrategy) void
+        +sortData(data: List) List
+    }
+
+    SortContext o-- SortStrategy
+    BubbleSort ..|> SortStrategy
+    QuickSort ..|> SortStrategy
+    MergeSort ..|> SortStrategy
+```
+
 ---
 
 ## Sequence Diagram
@@ -96,6 +125,19 @@ alt payment success
 else payment failure
     Service -> Client : decline()
 end
+```
+
+### Visual Representation
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Subject
+    participant Observer
+
+    Client->>Subject: setState()
+    Subject->>Subject: notifyObservers()
+    Subject->>Observer: update()
 ```
 
 ---
