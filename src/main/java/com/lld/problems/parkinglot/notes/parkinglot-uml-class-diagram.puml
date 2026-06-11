@@ -1,0 +1,127 @@
+@startuml 
+title Class Diagram from Parking Lot System 
+
+' Classes & Interfaces Required
+class ParkingLot {
+    -slots: Map<SlotType, List<ParkingSlot>>
+    -parkingSlotFactory: ParkingSlotFactory
+    -vehicleFactory: VehicleFactory
+
+    +entry(String vehicleType,int platNumber): Ticket
+    +exit(Ticket ticket): Receipt
+}
+
+abstract ParkingSlot {
+    -slotNumber: int
+    +isOccupied(): boolean
+}
+
+abstract Vehicle{
+    -platNumber: int
+    -ownerName: String
+}
+
+class ParkingSlotFactory{
+    +createSlot(String type): ParkingSlot
+}
+
+class VehicleFactory{
+    +createVehicle(String type): Vehicle
+}
+
+class SmallParkingSlot{
+
+}
+
+class MediumParkingSlot{
+
+}
+
+class LargeParkingSlot{
+
+}
+
+class Bike{
+
+}
+
+class Car{
+
+}
+
+class Truck{
+
+}
+
+class Ticket{
+    -slot: ParkingSlot
+    -vehicle: Vehicle
+    -entryTime: DateTime
+}
+
+class Payment{
+    +calculateFee(Ticket ticket): Receipt
+}
+
+interface SlotAssignment{
+    +assign(Vehicle vehicle): ParkingSlot
+}
+
+interface SlotState{
+    +isOccupied(): boolean
+}
+
+class NearestToEntranceStrategy{
+
+}
+
+class NearestToExitStrategy{
+
+}
+
+enum SlotType{
+    SMALL
+    MEDIUM
+    LARGE
+}
+
+enum VehicleType{
+    BIKE 
+    CAR 
+    TRUCK
+}
+
+class Receipt{
+    -fee: double
+    -ticket: Ticket
+    -paymentStatus: boolean
+}
+
+'Relationship
+ParkingLot *-- ParkingSlot
+ParkingLot o-- SlotAssignment
+ParkingLot --> ParkingSlotFactory
+ParkingLot --> VehicleFactory
+ParkingLot --> Payment
+
+ParkingSlot --> SlotType
+Vehicle --> VehicleType
+
+Bike --|> Vehicle
+Car --|> Vehicle
+Truck --|> Vehicle
+
+LargeParkingSlot --|> ParkingSlot
+MediumParkingSlot --|> ParkingSlot
+SmallParkingSlot --|> ParkingSlot
+ParkingSlot ..|> SlotState
+
+NearestToEntranceStrategy ..|> SlotAssignment
+NearestToExitStrategy ..|> SlotAssignment
+
+Ticket --> ParkingSlot
+Ticket --> Vehicle
+Payment --> Ticket
+Payment --> Receipt
+
+@enduml

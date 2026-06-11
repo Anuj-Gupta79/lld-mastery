@@ -1,0 +1,17 @@
+@startuml
+title Entrance Flow
+
+participant Main
+participant ParkingLot
+participant VehicleFactory
+participant SlotAssignment
+
+Main -> ParkingLot: entry(vehicleType, plateNumber)
+ParkingLot -> VehicleFactory: createVehicle(vehicleType)
+VehicleFactory --> ParkingLot: Vehicle
+ParkingLot -> SlotAssignment: assign(Vehicle)
+SlotAssignment --> ParkingLot: ParkingSlot
+ParkingLot -> ParkingLot: createTicket(ParkingSlot, Vehicle)
+ParkingLot --> Main: Ticket
+
+@enduml

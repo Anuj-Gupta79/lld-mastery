@@ -1,0 +1,14 @@
+@startuml
+title Exit Flow
+
+participant Main 
+participant ParkingLot
+participant Payment
+
+Main -> ParkingLot: exit(Ticket)
+ParkingLot -> Payment: calculateFee(Ticket)
+Payment --> ParkingLot: Receipt
+ParkingLot -> ParkingLot: releaseSlot(Ticket)
+ParkingLot --> Main: Receipt
+
+@enduml
