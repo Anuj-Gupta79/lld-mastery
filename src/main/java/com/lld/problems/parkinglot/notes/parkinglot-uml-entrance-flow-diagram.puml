@@ -6,12 +6,12 @@ participant ParkingLot
 participant VehicleFactory
 participant SlotAssignment
 
-Main -> ParkingLot: entry(vehicleType, plateNumber)
-ParkingLot -> VehicleFactory: createVehicle(vehicleType)
+Main -> ParkingLot: entry(vehicleType, plateNumber, ownerName)
+ParkingLot -> VehicleFactory: createVehicle(vehicleType, plateNumber, ownerName)
 VehicleFactory --> ParkingLot: Vehicle
-ParkingLot -> SlotAssignment: assign(Vehicle)
+ParkingLot -> SlotAssignment: assign(vehicle, slotsMap)
 SlotAssignment --> ParkingLot: ParkingSlot
-ParkingLot -> ParkingLot: createTicket(ParkingSlot, Vehicle)
+ParkingLot -> ParkingLot: createTicket(parkingSlot, vehicle)
 ParkingLot --> Main: Ticket
 
 @enduml

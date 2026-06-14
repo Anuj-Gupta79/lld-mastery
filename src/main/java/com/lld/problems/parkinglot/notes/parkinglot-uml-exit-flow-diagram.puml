@@ -9,6 +9,7 @@ Main -> ParkingLot: exit(Ticket)
 ParkingLot -> Payment: calculateFee(Ticket)
 Payment --> ParkingLot: Receipt
 ParkingLot -> ParkingLot: releaseSlot(Ticket)
+ParkingLot -> Payment: processPayment(receipt)
 ParkingLot --> Main: Receipt
 
 @enduml

@@ -6,27 +6,34 @@ class ParkingLot {
     -slots: Map<SlotType, List<ParkingSlot>>
     -parkingSlotFactory: ParkingSlotFactory
     -vehicleFactory: VehicleFactory
+    -slotAssignment: SlotAssignment
+    -payment: Payment
 
-    +entry(String vehicleType,int platNumber): Ticket
-    +exit(Ticket ticket): Receipt
+    +entry(type: VehicleType, platNumber: String) : Ticket
+    +exit(ticket: Ticket) : Receipt
+    +setStrategy(strategy: SlotAssignment) : void
 }
 
 abstract ParkingSlot {
     -slotNumber: int
-    +isOccupied(): boolean
+    -occupied: boolean
+    +isOccupied() : boolean
+    +occupySlot() : void 
+    +releaseSlot() :  void
 }
 
 abstract Vehicle{
-    -platNumber: int
+    -platNumber: String
     -ownerName: String
+    +getRequiredSlotType() : SlotType
 }
 
 class ParkingSlotFactory{
-    +createSlot(String type): ParkingSlot
+    +createSlot(type: SlotType, slotNumber: int) : ParkingSlot
 }
 
 class VehicleFactory{
-    +createVehicle(String type): Vehicle
+    +createVehicle(type: VehicleType, platNumber: String, ownerName: String) : Vehicle
 }
 
 class SmallParkingSlot{
@@ -60,22 +67,24 @@ class Ticket{
 }
 
 class Payment{
-    +calculateFee(Ticket ticket): Receipt
+    -priceMap: Map<SlotType, Double>
+    +calculateFee(ticket: Ticket) : Receipt
+    +processPayment(receipt: Receipt) : void
 }
 
 interface SlotAssignment{
-    +assign(Vehicle vehicle): ParkingSlot
+    +assign(vehicle: Vehicle, slotsMap: Map<SlotType, List<ParkingSlot>>) : ParkingSlot
 }
 
 interface SlotState{
     +isOccupied(): boolean
 }
 
-class NearestToEntranceStrategy{
+class NearestToEntranceSlotAssignment{
 
 }
 
-class NearestToExitStrategy{
+class NearestToExitSlotAssignment{
 
 }
 
@@ -104,8 +113,8 @@ ParkingLot --> ParkingSlotFactory
 ParkingLot --> VehicleFactory
 ParkingLot --> Payment
 
-ParkingSlot --> SlotType
-Vehicle --> VehicleType
+ParkingSlotFactory --> SlotType
+VehicleFactory --> VehicleType
 
 Bike --|> Vehicle
 Car --|> Vehicle
@@ -116,8 +125,8 @@ MediumParkingSlot --|> ParkingSlot
 SmallParkingSlot --|> ParkingSlot
 ParkingSlot ..|> SlotState
 
-NearestToEntranceStrategy ..|> SlotAssignment
-NearestToExitStrategy ..|> SlotAssignment
+NearestToEntranceSlotAssignment ..|> SlotAssignment
+NearestToExitSlotAssignment ..|> SlotAssignment
 
 Ticket --> ParkingSlot
 Ticket --> Vehicle

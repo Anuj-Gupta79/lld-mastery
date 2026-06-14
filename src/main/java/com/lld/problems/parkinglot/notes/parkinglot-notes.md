@@ -73,20 +73,27 @@ classDiagram
         -slots: Map~SlotType, List~ParkingSlot~~
         -parkingSlotFactory: ParkingSlotFactory
         -vehicleFactory: VehicleFactory
-        +entry(vehicleType: String, platNumber: int): Ticket
+        -slotAssignment: SlotAssignment
+        -payment: Payment
+        +entry(type: VehicleType, platNumber: String): Ticket
         +exit(ticket: Ticket): Receipt
+        +setStrategy(strategy: SlotAssignment): void
     }
 
     class ParkingSlot {
         <<abstract>>
         -slotNumber: int
+        -occupied: boolean
         +isOccupied(): boolean
+        +occupySlot(): void
+        +releaseSlot(): void
     }
 
     class Vehicle {
         <<abstract>>
-        -platNumber: int
+        -platNumber: String
         -ownerName: String
+        +getRequiredSlotType(): SlotType
     }
 
     class Ticket {
@@ -96,7 +103,9 @@ classDiagram
     }
 
     class Payment {
+        -priceMap: Map~SlotType, Double~
         +calculateFee(ticket: Ticket): Receipt
+        +processPayment(receipt: Receipt): void
     }
 
     class Receipt {
@@ -107,7 +116,7 @@ classDiagram
 
     class SlotAssignment {
         <<interface>>
-        +assign(vehicle: Vehicle): ParkingSlot
+        +assign(vehicle: Vehicle, slotsMap: Map~SlotType, List~ParkingSlot~~): ParkingSlot
     }
 
     class SlotState {
@@ -116,15 +125,15 @@ classDiagram
     }
 
     class ParkingSlotFactory {
-        +createSlot(type: String): ParkingSlot
+        +createSlot(type: SlotType, slotNumber: int): ParkingSlot
     }
 
     class VehicleFactory {
-        +createVehicle(type: String): Vehicle
+        +createVehicle(type: VehicleType, platNumber: String, ownerName: String): Vehicle
     }
 
-    class NearestToEntranceStrategy
-    class NearestToExitStrategy
+    class NearestToEntranceSlotAssignment
+    class NearestToExitSlotAssignment
 
     class SmallParkingSlot
     class MediumParkingSlot
@@ -155,19 +164,20 @@ classDiagram
     ParkingLot --> Payment
 
     ParkingSlot ..|> SlotState
-    ParkingSlot --> SlotType
+
+    ParkingSlotFactory --> SlotType
+    VehicleFactory --> VehicleType
 
     SmallParkingSlot --|> ParkingSlot
     MediumParkingSlot --|> ParkingSlot
     LargeParkingSlot --|> ParkingSlot
 
-    Vehicle --> VehicleType
     Bike --|> Vehicle
     Car --|> Vehicle
     Truck --|> Vehicle
 
-    NearestToEntranceStrategy ..|> SlotAssignment
-    NearestToExitStrategy ..|> SlotAssignment
+    NearestToEntranceSlotAssignment ..|> SlotAssignment
+    NearestToExitSlotAssignment ..|> SlotAssignment
 
     Ticket --> ParkingSlot
     Ticket --> Vehicle
@@ -186,10 +196,10 @@ sequenceDiagram
     participant VehicleFactory
     participant SlotAssignment
 
-    Main->>ParkingLot: entry(vehicleType, plateNumber)
-    ParkingLot->>VehicleFactory: createVehicle(vehicleType)
+    Main->>ParkingLot: entry(vehicleType, plateNumber, ownerName)
+    ParkingLot->>VehicleFactory: createVehicle(vehicleType, plateNumber, ownerName)
     VehicleFactory-->>ParkingLot: Vehicle
-    ParkingLot->>SlotAssignment: assign(vehicle)
+    ParkingLot->>SlotAssignment: assign(vehicle, slotsMap)
     SlotAssignment-->>ParkingLot: ParkingSlot
     ParkingLot->>ParkingLot: createTicket(parkingSlot, vehicle)
     ParkingLot-->>Main: Ticket
@@ -209,6 +219,7 @@ sequenceDiagram
     ParkingLot->>Payment: calculateFee(ticket)
     Payment-->>ParkingLot: Receipt
     ParkingLot->>ParkingLot: releaseSlot(ticket)
+    ParkingLot->>Payment: processPayment(receipt)
     ParkingLot-->>Main: Receipt
 ```
 
@@ -223,3 +234,15 @@ sequenceDiagram
 - `releaseSlot()` called after payment — never free a slot before payment succeeds
 - Factories called by `ParkingLot`, not `Main` — creation is an implementation detail
 - Vehicle and ParkingSlot are abstract classes, not interfaces — they carry shared fields
+- addSlot() / removeSlot() — admin/operational concern, separate from transactional flow
+- Global slot numbering (1, 2, 3... across all types, not restarted per type) — required for `NearestToEntrance`/`NearestToExit` strategies to compare slot numbers meaningfully
+- `Payment`, `ParkingSlotFactory`, `VehicleFactory` created internally by `ParkingLot` (not injected) — single implementation each, no abstraction to depend on; DIP not violated meaningfully here
+- `SlotAssignment` has a default strategy (`NearestToEntranceSlotAssignment`) set in constructor — `setStrategy()` allows runtime swap, no null-check needed at call site
+- `entry()` returns `null` on no-slot-available (caught `IllegalStateException`) — `Main` must null-check before calling `exit()`
+- `Vehicle.getRequiredSlotType()` used by `Payment` to determine rate — relies on invariant that assigned slot type always equals vehicle's required type (true in this system, no overflow parking)
+
+## `// WHY:` Comments in Code
+
+- `Payment.calculateFee()` — `Math.max(1, hours)`: minimum 1-hour billing, even if actual duration is under an hour
+- `NearestToEntranceSlotAssignment.assign()` — lower `slotNumber` = closer to entrance (assumed linear layout)
+- `NearestToExitSlotAssignment.assign()` — higher `slotNumber` = closer to exit (assumed linear layout)
