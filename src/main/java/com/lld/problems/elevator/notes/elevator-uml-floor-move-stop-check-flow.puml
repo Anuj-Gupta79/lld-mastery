@@ -1,0 +1,21 @@
+@startuml
+title Move/Stop flow of Elevator
+
+participant Main
+participant Elevator
+participant Door
+
+loop over till pendingStops empty
+Main -> Elevator: moveOneStep()
+Elevator -> Elevator: currentFloor = new Floor(nextFloorNumber)
+Elevator -> Elevator: findFirstStop(): Button
+alt floor is in pendingStops
+Elevator -> Door: open
+Elevator -> Door: close
+Elevator -> Elevator: pendingStops.remove(button)
+else floor is not in pendingStops
+... Continue ...
+end
+end
+
+@enduml

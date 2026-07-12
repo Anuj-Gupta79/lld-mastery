@@ -1,0 +1,19 @@
+@startuml
+title New request floor request added
+
+participant Main
+participant Elevator
+participant ElevatorState
+participant NextStopStrategy
+
+Main -> Elevator: addFloorRequest(button)
+Elevator -> Elevator: pendingStops.add(button)
+Elevator -> Elevator: scheduleNextStop()
+loop for each button in pendingStops
+Elevator -> ElevatorState: shouldServiceNow(button.direction)
+ElevatorState --> Elevator: boolean
+end
+Elevator -> NextStopStrategy: getNextStops(direction, serviceableNow)
+NextStopStrategy --> Elevator: List<Button>
+
+@enduml

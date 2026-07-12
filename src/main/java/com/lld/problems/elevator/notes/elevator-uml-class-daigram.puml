@@ -1,0 +1,81 @@
+@startuml
+
+class Elevator{
+    -currentFloor: Floor
+    -door: Door
+    -strategy: NextStopStrategy
+    -currentState: ElevatorState
+    -pendingStops: List<Button>
+    -deferredStops: List<Button>
+
+    +addFloorRequest(button: Button): void
+    +scheduleNextStop(): void
+    +moveOneStep(): void
+    +hasPendingStops(): boolean
+}
+
+class Door{
+    -isOpen: boolean
+
+    +open(): void
+    +close(): void
+}
+
+class Floor{
+    -floorNumber: int
+}
+
+class Button{
+    -floor: Floor
+    -direction: Direction
+}
+
+interface ElevatorState{
+    +shouldServiceNow(direction: Direction): boolean
+    +getDirection(): Direction
+    +isIdle(): boolean
+}
+
+class IdleState{
+
+}
+
+class MovingUpState{
+
+}
+
+class MovingDownState{
+
+}
+
+interface NextStopStrategy{
+    +getNextStops(direction: Direction, pendingStops: List<Button>): List<Button>
+}
+
+class ScanStrategy{
+
+}
+
+enum Direction{
+    UP
+    DOWN
+}
+
+Elevator *-- Button
+Elevator *-- Door
+Elevator --> Floor
+Elevator --> ElevatorState
+Elevator --> NextStopStrategy
+
+Floor *-- Button
+
+NextStopStrategy --> Direction
+ElevatorState --> Direction
+
+IdleState ..|> ElevatorState
+MovingDownState ..|> ElevatorState
+MovingUpState ..|> ElevatorState
+
+ScanStrategy ..|> NextStopStrategy
+
+@enduml
