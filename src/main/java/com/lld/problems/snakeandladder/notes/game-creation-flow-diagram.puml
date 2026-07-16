@@ -1,0 +1,22 @@
+@startuml 
+title Game Creation Flow
+
+participant Main
+participant SnakeAndLadderGame
+participant PlayerFactory
+participant TurnManager
+participant Board
+
+Main -> SnakeAndLadderGame: start(indicatorTypes: List<PlayerIndicator>)
+create Board
+SnakeAndLadderGame -> Board: new Board()
+Board -> Board: generateJumps()
+loop until indicatorTypes become empty
+SnakeAndLadderGame -> PlayerFactory: createPlayer(indicatorType: PlayerIndicator)
+PlayerFactory --> SnakeAndLadderGame: Player
+SnakeAndLadderGame -> SnakeAndLadderGame: players.add(player)
+SnakeAndLadderGame -> Board: registerPlayer(player: Player)
+end
+create TurnManager
+SnakeAndLadderGame -> TurnManager: new TurnManager(players)
+@enduml

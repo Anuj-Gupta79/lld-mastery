@@ -1,0 +1,35 @@
+@startuml
+title Turn Sequence FloralWhite
+
+participant SnakeAndLadderGame
+participant TurnManager
+participant Player
+participant Board
+participant Dice
+participant Pawn
+
+loop until checkWin(pawn: Pawn) == true
+SnakeAndLadderGame->TurnManager: getNextPlayer()
+TurnManager --> SnakeAndLadderGame: Player
+SnakeAndLadderGame -> Player: chance(board: Board)
+Player -> Dice: roll()
+Dice --> Player: int
+Player -> Player: getPawn()
+Player --> Player: Pawn
+Player ->  Player: getCurrentPosition()
+Player --> Player: int
+Player -> Board: getFinalPosition(currPosition: int, steps: int)
+Board --> Player: int
+Player -> Player: moveToCell(finalPosition)
+Player -> Pawn: updatePosition(finalPosition)
+SnakeAndLadderGame -> Player: getPawn()
+Player --> SnakeAndLadderGame: Pawn
+SnakeAndLadderGame -> Board: checkWin(pawn: Pawn)
+Board --> SnakeAndLadderGame: boolean
+SnakeAndLadderGame -> Board: notifyPlayers(pawn: Pawn)
+alt checkWin == true
+SnakeAndLadderGame -> SnakeAndLadderGame: end(winner: Player)
+break
+end
+end
+@enduml
