@@ -5,7 +5,7 @@ import com.lld.problems.elevator.code.models.Button;
 import com.lld.problems.elevator.code.models.Floor;
 import com.lld.problems.elevator.code.strategy.ScanStrategy;
 
-public class ElevatorMain {
+public class Main {
     public static void main(String[] args) {
         Elevator elevator = new Elevator(new ScanStrategy());
 

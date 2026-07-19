@@ -1,35 +1,24 @@
 @startuml
 title Turn Sequence FloralWhite
+    participant SnakeAndLadderMain
+    participant SnakeAndLadderGame
+    participant PlayerFactory
+    participant Board
+    participant TurnManager
 
-participant SnakeAndLadderGame
-participant TurnManager
-participant Player
-participant Board
-participant Dice
-participant Pawn
+    SnakeAndLadderMain->>SnakeAndLadderGame: new SnakeAndLadderGame(playerInfos)
+    SnakeAndLadderGame->>Board: new Board()
+    activate Board
+    Board->>Board: generateJumps()
+    deactivate Board
 
-loop until checkWin(pawn: Pawn) == true
-SnakeAndLadderGame->TurnManager: getNextPlayer()
-TurnManager --> SnakeAndLadderGame: Player
-SnakeAndLadderGame -> Player: chance(board: Board)
-Player -> Dice: roll()
-Dice --> Player: int
-Player -> Player: getPawn()
-Player --> Player: Pawn
-Player ->  Player: getCurrentPosition()
-Player --> Player: int
-Player -> Board: getFinalPosition(currPosition: int, steps: int)
-Board --> Player: int
-Player -> Player: moveToCell(finalPosition)
-Player -> Pawn: updatePosition(finalPosition)
-SnakeAndLadderGame -> Player: getPawn()
-Player --> SnakeAndLadderGame: Pawn
-SnakeAndLadderGame -> Board: checkWin(pawn: Pawn)
-Board --> SnakeAndLadderGame: boolean
-SnakeAndLadderGame -> Board: notifyPlayers(pawn: Pawn)
-alt checkWin == true
-SnakeAndLadderGame -> SnakeAndLadderGame: end(winner: Player)
-break
-end
-end
+    loop for each PlayerInfo
+        SnakeAndLadderGame->>PlayerFactory: createPlayer(indicator, name)
+        PlayerFactory-->>SnakeAndLadderGame: Player
+        SnakeAndLadderGame->>SnakeAndLadderGame: players.add(player)
+        SnakeAndLadderGame->>Board: registerPlayer(player)
+    end
+
+    SnakeAndLadderGame->>TurnManager: new TurnManager(players)
+    SnakeAndLadderMain->>SnakeAndLadderGame: start()
 @enduml

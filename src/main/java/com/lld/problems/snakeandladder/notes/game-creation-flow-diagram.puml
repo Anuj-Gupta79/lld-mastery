@@ -1,22 +1,40 @@
 @startuml 
 title Game Creation Flow
 
-participant Main
 participant SnakeAndLadderGame
-participant PlayerFactory
-participant TurnManager
-participant Board
+    participant TurnManager
+    participant Player
+    participant Dice
+    participant Board
+    participant Pawn
 
-Main -> SnakeAndLadderGame: start(indicatorTypes: List<PlayerIndicator>)
-create Board
-SnakeAndLadderGame -> Board: new Board()
-Board -> Board: generateJumps()
-loop until indicatorTypes become empty
-SnakeAndLadderGame -> PlayerFactory: createPlayer(indicatorType: PlayerIndicator)
-PlayerFactory --> SnakeAndLadderGame: Player
-SnakeAndLadderGame -> SnakeAndLadderGame: players.add(player)
-SnakeAndLadderGame -> Board: registerPlayer(player: Player)
-end
-create TurnManager
-SnakeAndLadderGame -> TurnManager: new TurnManager(players)
+    loop until checkWin == true
+        SnakeAndLadderGame->>TurnManager: getNextPlayer()
+        TurnManager-->>SnakeAndLadderGame: Player
+
+        SnakeAndLadderGame->>Player: chance(board)
+        activate Player
+        Note over Player: HumanPlayer blocks on console input here;<br/>BotPlayer rolls instantly — the one varying step
+        Player->>Dice: roll()
+        Dice-->>Player: int
+        Player->>Pawn: getCurrentPosition()
+        Pawn-->>Player: int
+        Player->>Board: getFinalPosition(currentPosition, steps)
+        Board-->>Player: int
+        Player->>Player: moveToCell(finalPosition)
+        Player->>Pawn: updatePosition(finalPosition)
+        deactivate Player
+
+        SnakeAndLadderGame->>Player: getPawn()
+        Player-->>SnakeAndLadderGame: Pawn
+
+        SnakeAndLadderGame->>Board: checkWin(pawn)
+        Board-->>SnakeAndLadderGame: boolean
+
+        SnakeAndLadderGame->>Board: notifyPlayers(currentPlayer)
+
+        alt checkWin == true
+            SnakeAndLadderGame->>SnakeAndLadderGame: end(currentPlayer)
+        end
+    end
 @enduml

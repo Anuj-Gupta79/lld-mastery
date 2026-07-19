@@ -1,92 +1,100 @@
 @startuml
 
-title Snake And Ladder Game
+    class SnakeAndLadderGame {
+        -players: List~Player~
+        -playerFactory: PlayerFactory
+        -turnManager: TurnManager
+        -board: Board
+        +SnakeAndLadderGame(playerInfos: List~PlayerInfo~)
+        +start() void
+        +end(winner: Player) void
+    }
 
-class SnakeAndLadderGame{
-    -players: List<Player>
-    -playerFactory: PlayerFactory
-    -turnManager: TurnManager
+    class PlayerInfo {
+        -playerName: String
+        -playerIndicator: PlayerIndicator
+        +getPlayerName() String
+        +getPlayerIndicator() PlayerIndicator
+    }
 
-    +start(indicatorTypes: List<PlayerIndicator>): void
-    +end(winner: Player): void
-}
+    class PlayerFactory {
+        +createPlayer(indicator: PlayerIndicator, playerName: String) Player
+    }
 
-class PlayerFactory{
-    +createPlayer(indicator : PlayerIndicator): Player
-}
+    class Player {
+        <<abstract>>
+        -playerName: String
+        -pawn: Pawn
+        -dice: Dice
+        +chance(board: Board) void
+        +rollDice()* int
+        +moveToCell(position: int) void
+        +getPawn() Pawn
+        +getPlayerName() String
+    }
 
-abstract Player{
-    -pawn: Pawn
-    -dice: Dice
-    +chance(board: Board): void
-    +{abstract} rollDice(): int
-    +moveToCell(position: int): void
-    +getPawn(): Pawn
-}
+    class HumanPlayer {
+        -scanner: Scanner
+        +rollDice() int
+    }
+    class BotPlayer {
+        +rollDice() int
+    }
 
-class HumanPlayer{
+    class Dice {
+        +roll() int
+    }
 
-}
+    class Board {
+        -jumps: List~Jump~
+        -players: List~Player~
+        +getFinalPosition(currentPosition: int, steps: int) int
+        +generateJumps() void
+        +notifyPlayers(currPlayer: Player) void
+        +checkWin(pawn: Pawn) boolean
+        +registerPlayer(player: Player) void
+    }
 
-class BotPlayer{
+    class TurnManager {
+        -currentPlayer: Player
+        -players: List~Player~
+        +getNextPlayer() Player
+    }
+
+    class Jump {
+        -start: int
+        -end: int
+        +isSnake() boolean
+        +isLadder() boolean
+    }
+
+    class Pawn {
+        -currentPosition: int
+        +updatePosition(position: int) void
+        +getCurrentPosition() int
+    }
+
+    class PlayerIndicator {
+        <<enumeration>>
+        HUMAN
+        BOT
+    }
+
+    SnakeAndLadderGame --> PlayerFactory
+    SnakeAndLadderGame ..> PlayerInfo
+    SnakeAndLadderGame *-- TurnManager
+    SnakeAndLadderGame o-- Player
+    SnakeAndLadderGame *-- Board
+    PlayerFactory ..> Player
+    PlayerFactory ..> PlayerIndicator
+    PlayerInfo ..> PlayerIndicator
+    HumanPlayer --|> Player
+    BotPlayer --|> Player
+    Board *-- Jump
+    Board o-- Player
+    TurnManager o-- Player
+    Player --> Dice
+    Player *-- Pawn
+    Player ..> Board
     
-}
-
-class Dice{
-    +roll(): int
-}
-
-class Board {
-    -jumps: List<Jump>
-    -players: List<Player>
-
-    +getFinalPosition(currPosition: int, steps: int): int
-    +generateJumps(): void
-    +notifyPlayers(pawn: Pawn): void
-    +checkWin(pawn: Pawn): boolean
-    +registerPlayer(player: Player): void
-}
-
-class TurnManager {
-    -currentPlayer: Player
-    -players: List<Player>
-    +getNextPlayer(): Player
-}
-
-class Jump{
-    -start: int
-    -end: int
-
-    +isSnake(): boolean
-    +isLadder(): boolean
-}
-
-class Pawn{
-    -position: int
-
-    +updatePosition(updatedPosition: int): void
-    +getCurrentPosition(): int
-}
-
-enum PlayerIndicator{
-    HUMAN   
-    BOT
-}
-
-SnakeAndLadderGame --> PlayerFactory
-SnakeAndLadderGame ..> PlayerIndicator
-SnakeAndLadderGame *-- TurnManager
-SnakeAndLadderGame o-- Player
-SnakeAndLadderGame *-- Board
-PlayerFactory ..> Player
-PlayerFactory ..> PlayerIndicator
-HumanPlayer --|> Player
-BotPlayer --|> Player
-Board *-- Jump
-Board --o Player
-TurnManager o-- Player
-Player --> Dice
-Player *-- Pawn
-Player ..> Board
-
 @enduml
