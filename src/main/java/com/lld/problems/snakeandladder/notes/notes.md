@@ -223,7 +223,7 @@ sequenceDiagram
 
         SnakeAndLadderGame->>Player: chance(board)
         activate Player
-        Note over Player: HumanPlayer blocks on console input here;<br/>BotPlayer rolls instantly — the one varying step
+        Note over Player: HumanPlayer blocks on console input here, BotPlayer rolls instantly — the one varying step
         Player->>Dice: roll()
         Dice-->>Player: int
         Player->>Pawn: getCurrentPosition()
