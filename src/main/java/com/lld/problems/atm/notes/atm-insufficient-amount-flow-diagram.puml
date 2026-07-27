@@ -1,0 +1,22 @@
+
+@startuml
+title Insufficient Amount Flow - Negative Path
+
+participant Main
+participant ATM
+participant AmountEntryState
+participant DispensingState
+participant CashInventory
+
+Main -> ATM: enterAmount(amount)
+ATM -> AmountEntryState: enterAmount(amount, this)
+AmountEntryState -> ATM: setState(new DispensingState)
+AmountEntryState -> DispensingState: dispense(amount, atm)
+DispensingState -> CashInventory: isSufficientAmount(amount)
+CashInventory --> DispensingState: false
+DispensingState -> ATM: setState(new AmountEntryState)
+DispensingState --> AmountEntryState: void
+AmountEntryState --> ATM: void
+ATM --> Main: void
+
+@enduml

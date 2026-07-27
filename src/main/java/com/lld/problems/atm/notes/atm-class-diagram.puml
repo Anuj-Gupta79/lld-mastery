@@ -1,0 +1,84 @@
+@startuml
+title ATM machine class Diagram
+
+class ATM {
+    -currState: ATMState
+    -cashInventory: CashInventory
+    -retryAttempt: int
+    -card: Card
+    -transaction: Transaction
+    -receipt: Receipt
+
+    +setState(state: ATMState): void
+}
+
+interface ATMState {
+    +insert(card: Card, atm: ATM): void
+    +enterPin(pin: int, atm: ATM): void
+    +enterAmount(amount: int, atm: ATM): void
+    +eject(atm: ATM): void
+}
+
+class IdleState{
+
+}
+
+class PinEntryState{
+
+}
+
+class AmountEntryState{
+
+}
+
+class DispensingState {
+    +dispense(amount: int, atm: ATM): void
+}
+
+class Card{
+    -accountName: String
+    -cardNumber: int
+    -accountNumber: int
+    -pin: int
+}
+
+class CashInventory{
+    -availableAmount: int
+
+    +isSufficientAmount(amount: int): boolean
+    +deductCash(amount: int): void
+    +getAvailableAmount(): int
+}
+
+class Receipt {
+    -amount: int
+    -accountName: String
+    -accountNumber: int
+    -date: LocalDate
+}
+
+class Transaction {
+    -amount: int
+    -timeStamp: LocalDateTime
+    -status: Status
+
+    +record(status: Status, amount: int): void 
+}
+
+enum Status{
+    SUCCESS
+    FAILURE
+}
+
+ATM *-- ATMState
+ATM *-- CashInventory
+ATM *-- Receipt
+ATM *-- Transaction
+ATM o-- Card
+IdleState ..|> ATMState
+PinEntryState ..|> ATMState
+AmountEntryState ..|> ATMState
+DispensingState ..|> ATMState
+Transaction --> Status
+
+@enduml

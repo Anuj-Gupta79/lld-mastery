@@ -1,0 +1,48 @@
+@startuml
+title ATM Flow - Happy Path
+
+participant Main
+participant ATM
+participant IdleState
+participant PinEntryState
+participant AmountEntryState
+participant DispensingState
+participant CashInventory
+participant Transaction
+participant Receipt
+
+Main -> ATM: insert(card)
+ATM -> IdleState: insert(card, this)
+IdleState -> ATM: setState(new PinEntryState)
+IdleState -> ATM: setCard(card)
+IdleState --> ATM: void
+ATM --> Main: void
+
+Main -> ATM: enterPin(pin)
+ATM -> PinEntryState: enterPin(pin, this)
+PinEntryState -> PinEntryState: validatePin(pin, atm)
+PinEntryState -> ATM: setState(new AmountEntryState)
+PinEntryState --> ATM: void
+ATM --> Main: void
+
+Main -> ATM: enterAmount(amount)
+ATM -> AmountEntryState: enterAmount(amount, this)
+AmountEntryState -> ATM: setState(new DispensingState)
+AmountEntryState -> DispensingState: dispense(amount, atm)
+DispensingState -> CashInventory: isSufficientAmount(amount)
+CashInventory --> DispensingState: boolean
+alt isSufficientAmount(amount) == true
+    DispensingState -> CashInventory: deductCash(amount)
+    CashInventory --> DispensingState: void
+    DispensingState -> Transaction: record(SUCCESS, amount)
+    Transaction --> DispensingState: void
+    DispensingState -> Receipt: new Receipt(atm.getCard(), amount)
+    Receipt --> DispensingState: receipt
+    DispensingState -> ATM: setReceipt(receipt)
+    DispensingState -> ATM: eject()
+end
+DispensingState --> AmountEntryState: void
+AmountEntryState --> ATM: void
+ATM --> Main: void
+
+@enduml
