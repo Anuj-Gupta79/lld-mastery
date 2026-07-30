@@ -1,14 +1,18 @@
 @startuml
-title ATM machine class Diagram
+title ATM Machine — Class Diagram (final, synced to code)
 
 class ATM {
-    -currState: ATMState
-    -cashInventory: CashInventory
-    -retryAttempt: int
     -card: Card
+    -currentState: ATMState
+    -inventory: CashInventory
+    -retryAttempt: int
     -transaction: Transaction
     -receipt: Receipt
 
+    +insert(card: Card): void
+    +enterPin(pin: int): void
+    +enterAmount(amount: int): void
+    +eject(): void
     +setState(state: ATMState): void
 }
 
@@ -19,34 +23,31 @@ interface ATMState {
     +eject(atm: ATM): void
 }
 
-class IdleState{
-
+class IdleState {
 }
 
-class PinEntryState{
-
+class PinEntryState {
 }
 
-class AmountEntryState{
-
+class AmountEntryState {
 }
 
-class DispensingState {
+class DispenseService {
     +dispense(amount: int, atm: ATM): void
 }
 
-class Card{
+class Card {
     -accountName: String
     -cardNumber: int
     -accountNumber: int
     -pin: int
 }
 
-class CashInventory{
+class CashInventory {
     -availableAmount: int
 
     +isSufficientAmount(amount: int): boolean
-    +deductCash(amount: int): void
+    +deductAmount(amount: int): void
     +getAvailableAmount(): int
 }
 
@@ -59,13 +60,13 @@ class Receipt {
 
 class Transaction {
     -amount: int
-    -timeStamp: LocalDateTime
+    -timestamp: LocalDateTime
     -status: Status
 
-    +record(status: Status, amount: int): void 
+    +record(status: Status, amount: int): void
 }
 
-enum Status{
+enum Status {
     SUCCESS
     FAILURE
 }
@@ -78,7 +79,10 @@ ATM o-- Card
 IdleState ..|> ATMState
 PinEntryState ..|> ATMState
 AmountEntryState ..|> ATMState
-DispensingState ..|> ATMState
+AmountEntryState ..> DispenseService
+DispenseService ..> CashInventory
+DispenseService ..> Transaction
+DispenseService ..> Receipt
 Transaction --> Status
 
 @enduml

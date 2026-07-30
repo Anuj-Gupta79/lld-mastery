@@ -1,0 +1,51 @@
+@startuml
+title ATM Flow - Happy Path (final, synced to code)
+
+participant Main
+participant ATM
+participant IdleState
+participant PinEntryState
+participant AmountEntryState
+participant DispenseService
+participant CashInventory
+participant Transaction
+participant Receipt
+
+Main -> ATM: insert(card)
+ATM -> IdleState: insert(card, this)
+IdleState -> ATM: setCard(card)
+IdleState -> ATM: setState(new PinEntryState)
+IdleState --> ATM: void
+ATM --> Main: void
+
+loop until valid or 3rd failure
+    Main -> ATM: enterPin(pin)
+    ATM -> PinEntryState: enterPin(pin, this)
+    PinEntryState -> PinEntryState: isValid = validatePin(cardPin, pin)
+    alt isValid == true
+        PinEntryState -> ATM: setState(new AmountEntryState)
+    else isValid == false
+        PinEntryState -> ATM: setRetryAttempt(retryAttempt + 1)
+        PinEntryState --> Main: throws InvalidParameterException\n(caught, re-prompt)
+    end
+end
+
+loop until sufficient or user ejects
+    Main -> ATM: enterAmount(amount)
+    ATM -> AmountEntryState: enterAmount(amount, this)
+    AmountEntryState -> DispenseService: new DispenseService().dispense(amount, atm)
+    DispenseService -> CashInventory: isSufficientAmount(amount)
+    CashInventory --> DispenseService: true
+
+    DispenseService -> CashInventory: deductAmount(amount)
+    CashInventory --> DispenseService: void
+    DispenseService -> Transaction: record(SUCCESS, amount)
+    Transaction --> DispenseService: void
+    DispenseService -> Receipt: new Receipt(amount, atm.getCard())
+    Receipt --> DispenseService: receipt
+    DispenseService -> ATM: setTransaction(transaction)
+    DispenseService -> ATM: setReceipt(receipt)
+    DispenseService -> ATM: eject()
+end
+
+@enduml

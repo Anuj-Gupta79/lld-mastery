@@ -1,0 +1,28 @@
+@startuml
+title Insufficient Amount Flow - Negative Path (final, synced to code)
+
+participant Main
+participant ATM
+participant AmountEntryState
+participant DispenseService
+participant CashInventory
+participant Transaction
+
+Main -> ATM: enterAmount(amount)
+ATM -> AmountEntryState: enterAmount(amount, this)
+AmountEntryState -> DispenseService: new DispenseService().dispense(amount, atm)
+DispenseService -> CashInventory: isSufficientAmount(amount)
+CashInventory --> DispenseService: false
+DispenseService -> Transaction: record(FAILURE, amount)
+Transaction --> DispenseService: void
+DispenseService --> Main: throws InvalidParameterException
+
+note over Main: driver catches, offers eject or retry with new amount
+alt user chooses eject
+    Main -> ATM: eject()
+    note right: loop guarded by\natm.getCard() != null, exits
+else user retries
+    note right: loop re-prompts,\ncalls enterAmount(newAmount) again
+end
+
+@enduml

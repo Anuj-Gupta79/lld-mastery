@@ -1,0 +1,25 @@
+@startuml
+title Pin Failure Flow - Negative Path (final, synced to code)
+
+participant Main
+participant ATM
+participant PinEntryState
+
+Main -> ATM: enterPin(pin)
+ATM -> PinEntryState: enterPin(pin, this)
+PinEntryState -> PinEntryState: isValid = validatePin(cardPin, pin)
+
+alt isValid == true
+    PinEntryState -> ATM: setState(new AmountEntryState)
+else isValid == false
+    PinEntryState -> ATM: setRetryAttempt(retryAttempt + 1)
+    alt retryAttempt >= 3
+        PinEntryState -> ATM: eject()
+        note right: default ATMState.eject():\nclear card, reset retryAttempt,\nsetState(new IdleState)
+    else retryAttempt < 3
+        PinEntryState --> Main: throws InvalidParameterException
+        note right: caught by driver loop,\nre-prompts for PIN
+    end
+end
+
+@enduml

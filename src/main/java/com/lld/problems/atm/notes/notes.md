@@ -12,44 +12,71 @@
 
 ## Entities
 
-- **ATM** — central orchestrator/context for the State pattern. Owns `currState`, `cashInventory`, `retryAttempt`, `card`, `transaction`, `receipt`. All four user-facing actions (`insert`, `enterPin`, `enterAmount`, `eject`) live here as thin public methods that delegate to `currState`.
-- **ATMState** (interface) — declares `insert`, `enterPin`, `enterAmount`, `eject`, each taking the relevant data plus a reference to `ATM` itself (needed so concrete states can call back into `ATM` for `setState()`/field updates without storing an `ATM` reference internally — keeps state objects stateless/reusable).
-- **IdleState / PinEntryState / AmountEntryState / DispensingState** — concrete states. Each meaningfully implements only its one "valid" transition; calls to the other three methods throw meaningful exceptions (standard State-pattern shape — most states legitimately reject most calls).
+- **ATM** — central orchestrator/context for the State pattern. Owns `currentState`, `inventory` (CashInventory), `retryAttempt`, `card`, `transaction`, `receipt`. All four user-facing actions (`insert`, `enterPin`, `enterAmount`, `eject`) live here as thin public methods that delegate to `currentState`.
+- **ATMState** (interface) — declares `insert`, `enterPin`, `enterAmount`, plus a `default eject(ATM atm)` implementation shared by every state except `IdleState` (which overrides it to reject, since there's no card to eject). Each concrete state's method takes the relevant data plus a reference to `ATM` itself, passed as a parameter rather than stored — keeps state objects stateless/reusable across customers.
+- **IdleState / PinEntryState / AmountEntryState** — the only three concrete states. (`DispensingState` was designed but later eliminated — see Known Deviations.)
+- **DispenseService** — plain service class (not a `State`), holds the actual dispensing logic: sufficiency check, deduct cash, record transaction, build receipt, eject.
 - **Card** — pure data (`accountName`, `cardNumber`, `accountNumber`, `pin`). No behavior.
-- **CashInventory** — tracks ATM's physical cash (`availableAmount`), exposes `isSufficientAmount()` / `deductCash()`.
-- **Transaction** — pure data + one recording method (`record(status, amount)`), captures `amount`, `timeStamp`, `status`.
-- **Receipt** — pure data (`amount`, `accountName`, `accountNumber`, `date`), built from Card + Transaction info once a transaction completes.
+- **CashInventory** — tracks ATM's physical cash (`availableAmount`), exposes `isSufficientAmount()` / `deductAmount()` / `getAvailableAmount()`.
+- **Transaction** — pure data + one recording method (`record(status, amount)`), captures `amount`, `timestamp`, `status`.
+- **Receipt** — pure data (`amount`, `accountName`, `accountNumber`, `date`) — snapshots primitive values out of `Card` at construction time rather than holding a live `Card` reference.
 - **Status** (enum) — `SUCCESS` / `FAILURE`.
 
 ## Key Design Decisions
 
-- **No separate `Session` class.** Originally introduced to hold per-visit data (PIN attempt count, current card), then deliberately collapsed once traced: "only one customer at a time" doesn't require a separate Session object — `ATM` itself can hold that data directly, reset naturally each time a new customer's flow begins. This is the same category of self-correction as L3's Jump/interface collapse — reject an abstraction once it's shown to add no real behavior.
-- **State objects are stateless and reusable across customers.** No per-customer data (PIN, amount, attempt count) is stored inside `IdleState`/`PinEntryState`/etc. — all persistent data lives on `ATM`, passed in as a parameter to each state method. This keeps a single instance of each concrete state shareable/reusable rather than tied to one customer's flow.
-- **`amount` and `pin` are never stored as ATM fields — passed through transiently.** Both are only needed within a single synchronous call chain (compare PIN once against `card.getPin()`; pass amount straight through `enterAmount()` → `dispense()`). Applied the same stored-field-vs-parameter test used in L3 for Player/Board.
-- **`card` and `retryAttempt` ARE stored fields on ATM.** Both need to persist *across separate top-level calls* from the driver (`insert()` → later `enterPin()` → later `eject()`), unlike `pin`/`amount` which live and die within one call.
-- **`DispensingState.dispense()` exists only on `DispensingState`, not the shared `ATMState` interface** — since no other state needs it and it's never called directly by `Main`, only internally by `AmountEntryState`. Called directly, state-to-state, rather than routed back through `ATM` — a deliberate, knowingly-made deviation from the more common textbook shape (where states typically avoid calling each other directly to reduce coupling). Chosen here because `enterAmount()` synchronously drives the entire rest of the flow with no separate user trigger needed.
-- **Auto-eject after dispensing.** `DispensingState` calls `atm.eject()` directly once dispensing/receipt-building completes — user collects card afterward, no separate manual eject step required in the success path.
-- **Receipt is built by `DispensingState`**, immediately after `Transaction.record()` — it already holds `amount` and can pull card info via `atm.getCard()`, so no other class needs to own this responsibility.
-- **PIN retry count increments before the exhaustion check, in the same call.** The 3rd wrong attempt both increments the count to 3 *and* triggers eject in that same `enterPin()` call — not deferred to a 4th call.
-- **Insufficient-ATM-cash path returns to `AmountEntryState`, not eject.** Matches scoped flow ("enter sufficient amount or eject") — user's next `enterAmount()` call re-enters the same flow; eject remains available as a separate action from any active state.
+- **No separate `Session` class.** "Only one customer at a time" doesn't require a separate Session object — `ATM` itself holds per-visit data directly, reset naturally each time a new customer's flow begins.
+- **State objects are stateless and reusable across customers.** No per-customer data (PIN, amount, attempt count) is stored inside any concrete state — all persistent data lives on `ATM`, passed in as a parameter to each state method.
+- **`amount` and `pin` are never stored as ATM fields — passed through transiently.** Both are only needed within a single synchronous call chain.
+- **`card` and `retryAttempt` ARE stored fields on ATM.** Both persist _across separate top-level calls_ from the driver (`insert()` → later `enterPin()` → later `eject()`), unlike `pin`/`amount`.
+- **Retry loops (PIN, amount) live entirely in `ATMMain`, not inside any state.** A concrete state processes exactly one attempt per call and either transitions state or throws a recoverable exception; the driver's `while` loop is what re-prompts and calls again. Putting a loop _inside_ a state method would try to consume multiple attempts without ever getting fresh input — this was caught and fixed twice during implementation (once for PIN, once for insufficient-amount) before landing on this shape.
+- **`Receipt` snapshots primitives, not a `Card` reference.** Constructor still takes `Card` (matches the natural call site, `new Receipt(amount, card)`), but internally copies out `accountName`/`accountNumber` rather than storing the `Card` object — keeps a completed receipt immutable/historically accurate even if `Card` data could change later, and avoids exposing `card.getPin()` transitively through a receipt.
+- **Insufficient-ATM-cash path returns to `AmountEntryState`, does not auto-eject.** Matches scoped flow ("enter sufficient amount or eject") — user's next `enterAmount()` call retries; ejecting is a separate choice the driver offers.
+- **PIN retry count increments before the exhaustion check, in the same call.** The 3rd wrong attempt increments the count to 3 _and_ triggers eject in that same `enterPin()` call.
+- **`ATMMain`'s amount-entry loop is guarded by `atm.getCard() != null`.** Once the card is ejected — whether from PIN exhaustion or the user choosing to eject after insufficient funds — the loop condition itself prevents re-entry, rather than requiring an explicit `break` at every eject call site. Cleaner than manually tracking exit points.
 
 ## Patterns Used
 
-**State — `ATM.currState : ATMState`**
+**State — `ATM.currentState : ATMState`**
 
-- Real second/third/fourth implementation confirmed by design: `enterAmount()` genuinely behaves differently depending on current state (rejected with an exception in `PinEntryState`, proceeds to dispensing logic in `AmountEntryState`) — not just cosmetic phase-naming.
-- Considered and rejected: Chain of Responsibility for cash denomination breakdown (e.g., dispensing in largest-to-smallest notes) — explicitly scoped out as a real, named, plausible extension rather than missed or force-fit.
+- Real behavioral fork confirmed by code: `enterAmount()` on `PinEntryState` throws, on `AmountEntryState` proceeds — not just cosmetic phase-naming.
+- Considered and rejected: Chain of Responsibility for cash denomination breakdown — explicitly scoped out as a plausible extension rather than missed or force-fit.
+
+**Why `DispenseService` is a plain service, not a `State`:** it was originally designed as `DispensingState implements ATMState`, but on implementation it never participated in polymorphic dispatch — nothing calls it via any of the three shared interface methods; it was only ever reached through a bolted-on 5th method. A "state" only ever entered through a non-interface method is a sign it isn't really part of the State hierarchy. Converting it to a plain service removed a fake state transition that nothing ever observably queried.
 
 ## Design Smells Caught During This Session
 
-- Premature entity: `Session` was introduced to hold PIN-attempt-count and current-card data, then collapsed once traced against the "does the owner need this to persist, and is a separate object actually earning its keep" test — same category of correction as L3's Jump/interface collapse.
-- `Card.amount`/balance field proposed, then dropped — contradicted the explicit scope decision to not check account-side balance; a field nothing reads is dead data.
-- `ATM → Card` relationship almost drawn without a backing stored field — caught via the arrow/field audit (same recurring issue flagged in L3).
-- `ATM → Receipt` composition arrow initially had no matching field on `ATM` — same audit, fixed in a later pass.
-- State objects almost given a stored `ATM` reference as a field (tying one state instance to one specific machine) — caught by re-applying the stored-field-vs-parameter test; resolved to pass `ATM` as a method parameter instead, keeping states reusable/stateless.
-- PIN attempt-count almost placed as a field inside `PinEntryState` itself — would have broken statelessness (one customer's failed attempts leaking into the next, since state instances are shared). Corrected to live on `ATM`, with `PinEntryState` holding only the validation *logic*.
-- `setPin()`/stored `pin` field on ATM proposed, then removed — PIN is only ever needed transiently for one comparison, never referenced again afterward.
-- `requestedAmount` field on ATM proposed (with manual reset-to-0 on eject), then removed once traced — `enterAmount()` drives the entire dispensing flow synchronously in one call, so `amount` can be passed straight through as a parameter with no field needed at all.
+- Premature entity: `Session`, introduced then collapsed — same category as L3's Jump/interface collapse.
+- `Card.amount`/balance field proposed, then dropped — contradicted the scope decision to not check account-side balance.
+- `ATM → Card` and `ATM → Receipt` composition arrows initially drawn without matching stored fields — caught via arrow/field audit, same recurring issue as L3.
+- State objects almost given a stored `ATM` reference as a field — caught by the stored-field-vs-parameter test, resolved to pass `ATM` as a method parameter.
+- PIN attempt-count almost placed as a field inside `PinEntryState` itself — would have broken statelessness across shared instances. Corrected to live on `ATM`.
+- `setPin()`/stored `pin` field, and a `requestedAmount` field on ATM — both proposed, both removed once traced; neither needed to outlive a single synchronous call.
+- **`PinEntryState.enterPin()` initially contained an internal `while` loop** re-checking the same passed-in `pin` value repeatedly instead of returning control to the caller — would have spun instantly to exhaustion on a single wrong PIN, without ever getting a fresh value. Removed in favor of one comparison per call, loop moved to `ATMMain`.
+- **Recursion bug, caught twice:** `PinEntryState.eject()` initially called `atm.eject()`, which redispatches to `currentState.eject()` — infinite recursion. Same mistake reappeared as `atm.enterAmount()` called from inside the insufficient-amount branch, trying to self-invoke through the state machine instead of throwing and letting the driver re-prompt. Both fixed by moving retry orchestration to `ATMMain`.
+- **Off-by-one in retry exhaustion check:** `retryAttempt > 3` allowed a 4th wrong attempt before ejecting; corrected to `>= 3` to match the scoped "max 3 attempts."
+- **`DispenseService.dispense()` was briefly `static`**, defeating the purpose of using an object for the operation and mismatching the eventual instance-based call site — corrected to a normal instance method.
+- `Transaction`/`Receipt` objects were being constructed and used locally but never stored on `atm` — meant `atm.getTransaction()`/`atm.getReceipt()` would return stale/null data after a session. Fixed by wiring `atm.setTransaction(...)` / `atm.setReceipt(...)` at the point of creation.
+
+## Bugs Found + Fixed (in code)
+
+- `PinEntryState.enterPin()` used a `while` loop that re-evaluated the same passed-in PIN value repeatedly rather than processing one attempt per call — removed; one comparison per call, looping moved to the driver.
+- `PinEntryState.eject()` originally called `atm.eject()`, causing infinite recursion through `ATM → currentState.eject() → atm.eject() → ...`. Resolved by making `eject()` a `default` method on `ATMState` with real logic (clear card, reset retry count, transition to `IdleState`, print message), which every concrete state except `IdleState` inherits directly rather than each re-implementing or recursing.
+- Same recursion pattern reappeared in the insufficient-amount branch (`atm.enterAmount()` called from inside the state/service handling that same call) — fixed by throwing `InvalidParameterException` instead and letting `ATMMain`'s loop catch it and re-prompt.
+- Retry-exhaustion check used `retryAttempt > 3` (allowing a 4th attempt) instead of `>= 3` — fixed to match the scoped 3-attempt limit.
+- `validatePin(existPin, enteredPin)` was originally called with arguments in swapped order relative to the parameter names (`pin` bound to `existPin`, `card.getPin()` bound to `enteredPin`) — harmless given `==` symmetry, but misleading; corrected to match true parameter meaning.
+- `DispenseService.dispense()` was declared `static` and called via the class name rather than an instance — broke the ability to treat it as a normal collaborator object; changed to an instance method.
+- `Transaction` and `Receipt` were constructed inside `DispenseService.dispense()` but never attached back to `atm` — added `atm.setTransaction(...)` and `atm.setReceipt(...)` calls so they're retrievable after the session completes.
+- `Main.insert(card)` had a typo (`inset`) that would have caused a naming mismatch with the driver — fixed to `insert`.
+- `ATMMain`'s amount-entry loop didn't exit after the user chose to eject following an insufficient-funds message — the loop would immediately re-prompt on an already-`IdleState` machine and throw uncaught. Fixed by guarding the loop's condition on `atm.getCard() != null`, so ejecting (from any cause) naturally prevents further iterations.
+- `ATM(CashInventory)` constructor had no null-check — a `null` CashInventory would defer the failure to an NPE much later, at first use. Added explicit validation, throwing immediately with a clear message.
+
+## Known Deviations from Original Design
+
+- **`DispensingState` was designed as a full `ATMState` implementation but eliminated during coding, replaced by `DispenseService`, a plain (non-State) class.** On implementation, it became clear `DispensingState` never participated in polymorphic dispatch through any of the three shared interface methods (`insert`/`enterPin`/`enterAmount`) — it was only ever reached via a bolted-on 5th method (`dispense()`), which is a strong signal it wasn't really a _state_ in the pattern's sense, just dispensing logic wearing a State costume. `AmountEntryState.enterAmount()` now calls `new DispenseService().dispense(amount, atm)` directly — no `atm.setState(new DispensingState())` transition happens at all, since there's no externally observable "dispensing state" distinct from `AmountEntryState`.
+- **`CashInventory.deductCash()` renamed to `deductAmount()`** for naming consistency with `isSufficientAmount()` — diagram updated to match.
+- **`Card` gained a `cardNumber` field**, present in the original class-diagram intent but initially missing from a first code draft — added to match.
+- **`Receipt`'s constructor takes a `Card` reference (`new Receipt(amount, card)`), matching the original sequence diagram's call shape, but internally snapshots `accountName`/`accountNumber` as copied primitives rather than storing the `Card` object itself** — an intentional refinement for receipt immutability, not visible at the diagram/sequence level.
+- **All retry/re-prompt looping (PIN failures, insufficient-amount failures) lives in `ATMMain`, not inside any state or service.** The original sequence diagrams show a single pass through each flow; the actual retry mechanics (driver prompts, catches a recoverable exception, loops) sit one layer above what the sequence diagrams depict, by design — consistent with the L3 precedent that the driver/orchestrator owns loops, not delegated components.
 
 ## Diagrams
 
@@ -58,12 +85,16 @@
 ```mermaid
 classDiagram
     class ATM {
-        -currState: ATMState
-        -cashInventory: CashInventory
-        -retryAttempt: int
         -card: Card
+        -currentState: ATMState
+        -inventory: CashInventory
+        -retryAttempt: int
         -transaction: Transaction
         -receipt: Receipt
+        +insert(card: Card) void
+        +enterPin(pin: int) void
+        +enterAmount(amount: int) void
+        +eject() void
         +setState(state: ATMState) void
     }
 
@@ -78,7 +109,8 @@ classDiagram
     class IdleState
     class PinEntryState
     class AmountEntryState
-    class DispensingState {
+
+    class DispenseService {
         +dispense(amount: int, atm: ATM) void
     }
 
@@ -92,7 +124,7 @@ classDiagram
     class CashInventory {
         -availableAmount: int
         +isSufficientAmount(amount: int) boolean
-        +deductCash(amount: int) void
+        +deductAmount(amount: int) void
         +getAvailableAmount() int
     }
 
@@ -105,7 +137,7 @@ classDiagram
 
     class Transaction {
         -amount: int
-        -timeStamp: LocalDateTime
+        -timestamp: LocalDateTime
         -status: Status
         +record(status: Status, amount: int) void
     }
@@ -124,7 +156,10 @@ classDiagram
     IdleState ..|> ATMState
     PinEntryState ..|> ATMState
     AmountEntryState ..|> ATMState
-    DispensingState ..|> ATMState
+    AmountEntryState ..> DispenseService
+    DispenseService ..> CashInventory
+    DispenseService ..> Transaction
+    DispenseService ..> Receipt
     Transaction --> Status
 ```
 
@@ -137,46 +172,45 @@ sequenceDiagram
     participant IdleState
     participant PinEntryState
     participant AmountEntryState
-    participant DispensingState
+    participant DispenseService
     participant CashInventory
     participant Transaction
     participant Receipt
 
     Main->>ATM: insert(card)
     ATM->>IdleState: insert(card, this)
-    IdleState->>ATM: setState(new PinEntryState)
     IdleState->>ATM: setCard(card)
+    IdleState->>ATM: setState(new PinEntryState)
     IdleState-->>ATM: void
     ATM-->>Main: void
 
-    Main->>ATM: enterPin(pin)
-    ATM->>PinEntryState: enterPin(pin, this)
-    PinEntryState->>PinEntryState: validatePin(pin, atm)
-    PinEntryState->>ATM: setState(new AmountEntryState)
-    PinEntryState-->>ATM: void
-    ATM-->>Main: void
-
-    Main->>ATM: enterAmount(amount)
-    ATM->>AmountEntryState: enterAmount(amount, this)
-    AmountEntryState->>ATM: setState(new DispensingState)
-    AmountEntryState->>DispensingState: dispense(amount, atm)
-    DispensingState->>CashInventory: isSufficientAmount(amount)
-    CashInventory-->>DispensingState: boolean
-
-    alt isSufficientAmount == true
-        DispensingState->>CashInventory: deductCash(amount)
-        CashInventory-->>DispensingState: void
-        DispensingState->>Transaction: record(SUCCESS, amount)
-        Transaction-->>DispensingState: void
-        DispensingState->>Receipt: new Receipt(atm.getCard(), amount)
-        Receipt-->>DispensingState: receipt
-        DispensingState->>ATM: setReceipt(receipt)
-        DispensingState->>ATM: eject()
+    loop until valid or 3rd failure
+        Main->>ATM: enterPin(pin)
+        ATM->>PinEntryState: enterPin(pin, this)
+        PinEntryState->>PinEntryState: validatePin(cardPin, pin)
+        alt valid
+            PinEntryState->>ATM: setState(new AmountEntryState)
+        else invalid
+            PinEntryState->>ATM: setRetryAttempt(retryAttempt + 1)
+            PinEntryState-->>Main: throws InvalidParameterException (caught, re-prompt)
+        end
     end
 
-    DispensingState-->>AmountEntryState: void
-    AmountEntryState-->>ATM: void
-    ATM-->>Main: void
+    loop until sufficient or user ejects
+        Main->>ATM: enterAmount(amount)
+        ATM->>AmountEntryState: enterAmount(amount, this)
+        AmountEntryState->>DispenseService: new DispenseService().dispense(amount, atm)
+        DispenseService->>CashInventory: isSufficientAmount(amount)
+        CashInventory-->>DispenseService: true
+
+        DispenseService->>CashInventory: deductAmount(amount)
+        DispenseService->>Transaction: record(SUCCESS, amount)
+        DispenseService->>Receipt: new Receipt(amount, atm.getCard())
+        Receipt-->>DispenseService: receipt
+        DispenseService->>ATM: setTransaction(transaction)
+        DispenseService->>ATM: setReceipt(receipt)
+        DispenseService->>ATM: eject()
+    end
 ```
 
 ### Sequence Diagram — PIN Failure (3 attempts → eject)
@@ -186,27 +220,22 @@ sequenceDiagram
     participant Main
     participant ATM
     participant PinEntryState
-    participant Card
 
     Main->>ATM: enterPin(pin)
     ATM->>PinEntryState: enterPin(pin, this)
-    PinEntryState->>Card: getPin()
-    Card-->>PinEntryState: cardPin
-    PinEntryState->>PinEntryState: isValid = (pin == cardPin)
+    PinEntryState->>PinEntryState: isValid = validatePin(cardPin, pin)
 
     alt isValid == true
         PinEntryState->>ATM: setState(new AmountEntryState)
     else isValid == false
-        PinEntryState->>ATM: setRetryAttempt(atm.getRetryAttempt() + 1)
-        alt atm.getRetryAttempt() >= 3
-            PinEntryState->>ATM: eject()
-        else atm.getRetryAttempt() < 3
-            PinEntryState-->>ATM: void
+        PinEntryState->>ATM: setRetryAttempt(retryAttempt + 1)
+        alt retryAttempt >= 3
+            PinEntryState->>ATM: eject() [default ATMState.eject: clear card, reset retryAttempt, setState(IdleState)]
+        else retryAttempt < 3
+            PinEntryState-->>Main: throws InvalidParameterException
+            Note over Main: caught by driver loop, re-prompts for PIN
         end
     end
-
-    PinEntryState-->>ATM: void
-    ATM-->>Main: void
 ```
 
 ### Sequence Diagram — Insufficient ATM Cash (retry)
@@ -216,17 +245,23 @@ sequenceDiagram
     participant Main
     participant ATM
     participant AmountEntryState
-    participant DispensingState
+    participant DispenseService
     participant CashInventory
+    participant Transaction
 
     Main->>ATM: enterAmount(amount)
     ATM->>AmountEntryState: enterAmount(amount, this)
-    AmountEntryState->>ATM: setState(new DispensingState)
-    AmountEntryState->>DispensingState: dispense(amount, atm)
-    DispensingState->>CashInventory: isSufficientAmount(amount)
-    CashInventory-->>DispensingState: false
-    DispensingState->>ATM: setState(new AmountEntryState)
-    DispensingState-->>AmountEntryState: void
-    AmountEntryState-->>ATM: void
-    ATM-->>Main: void
+    AmountEntryState->>DispenseService: new DispenseService().dispense(amount, atm)
+    DispenseService->>CashInventory: isSufficientAmount(amount)
+    CashInventory-->>DispenseService: false
+    DispenseService->>Transaction: record(FAILURE, amount)
+    DispenseService-->>Main: throws InvalidParameterException
+
+    Note over Main: driver catches, offers eject or retry with new amount
+    alt user chooses eject
+        Main->>ATM: eject()
+        Note over Main: loop guarded by atm.getCard() != null, exits
+    else user retries
+        Note over Main: loop re-prompts, calls enterAmount(newAmount) again
+    end
 ```
