@@ -1,0 +1,146 @@
+@startuml
+title Class Diagram for Library
+
+class Library{
+    -books: Map<String, Book>
+    -bookItems: Map<String, BookItem>
+    -transactions: Map<String, Transaction>
+    -users: Map<String, User>
+    -paymentService: PaymentService
+    -expirationDays: int
+    -latePenaltyFee: double
+    -damagePenaltyFee: double
+    -passCreationFee: double
+    -maxBooksAllowed: int
+
+    +Library(context: LibraryContext)
+    +borrowBook(rentalType: RentalType, userId: String, bookId: String): Receipt
+    +returnBook(receipt: Receipt, userId: String): Receipt
+    +registerUser(user: User): void
+    +updateBookItemStatus(status: BookStatus, bookItemId: String): void
+    +addBook(book: Book): void
+    +addBookItem(bookItem: BookItem): void
+    +removeBook(bookId: String): void
+    +removeBookItem(bookItemId: String): void
+    +getAllTransactions(): List<Transaction>
+}
+
+class LibraryContext{
+    -expirationDays: int
+    -latePenaltyFee: double
+    -damagePenaltyFee: double
+    -passCreationFee: double
+    -maxBooksAllowed: int
+
+    +getExpirationDays(): int
+    +getLatePenaltyFee(): double
+    +getDamagePenaltyFee(): double
+    +getPassCreationFee(): double
+    +getMaxBookAllowed(): int
+}
+
+class Owner{
+    -ownerId: String
+    -ownerName: String
+    -library: Library
+
+    +addBook(book: Book): void
+    +removeBook(bookId: String): void
+    +addBookItem(bookItem: BookItem): void
+    +removeBookItem(bookItemId: String): void
+    +markDamage(bookItemId: String): void
+    +getAllTransactions(): List<Transaction>
+}
+
+class User {
+    -userId: String
+    -name: String
+    -pass: Pass
+    -currentBooksHeld: int
+
+    +createPass(passValidityDays: int, passFee: double, paymentService: PaymentService): void
+    +renewPass(passValidityDays: int, passFee: double, paymentService: PaymentService): void
+    +isPassValid(): boolean
+    +updateCurrentBooksHeld(counter: int): void
+}
+
+class Pass{
+    -expirationDate: LocalDate
+
+    +isActive(): boolean
+    +extendExpirationDate(validityDays: int): void
+    +setExpirationDate(validityDays: int): void
+}
+
+class Book{
+    -bookId: String
+    -title: String
+    -author: String
+    -bookItems: List<String>
+
+    +addBookItem(bookItemId: String): void
+    +removeBookItem(bookItemId: String): void
+}
+
+class BookItem{
+    -bookItemId: String
+    -parentId: String
+    -status: BookStatus
+
+    +updateStatus(status: BookStatus): void
+}
+
+class Transaction{
+    -id: String
+    -paymentService: PaymentService
+    -receipt: Receipt
+
+    +recordBorrowBook(rentalType: RentalType, bookItem: BookItem): Receipt
+    +recordReturnBook(pass: Pass, bookItem: BookItem, latePenaltyFee: double, damagePenaltyFee: double): Receipt
+    -getTotalPenaltyAmount(pass: Pass, bookItem: BookItem, latePenaltyFee: double, damagePenaltyFee: double): double
+    -getLatePenaltyAmount(expirationDate: LocalDate, latePenaltyFee: double): double
+}
+
+class Receipt{
+    -bookItemId: String
+    -transactionId: String
+    -rentalType: RentalType
+    -borrowTime: LocalDateTime
+    -returnTime: LocalDateTime
+    -penaltyAmount: double
+
+    +setReturnTime(): void
+    +updatePenaltyAmount(amount: double): void
+}
+
+class PaymentService {
+    +processPayment(amount: double): void
+}
+
+enum RentalType{
+    SIT_IN
+    BORROW
+}
+
+enum BookStatus{
+    AVAILABLE
+    ALLOCATE
+    DAMAGE
+}
+
+Owner o-- Library
+Library ..> LibraryContext : uses (constructor only)
+Library *-- Transaction
+Library *-- Book
+Library o-- User
+Library --> BookItem
+Library o-- PaymentService
+Book *-- BookItem
+BookItem --> Book
+BookItem --> BookStatus
+Transaction *-- Receipt
+Transaction --> RentalType
+Transaction o-- PaymentService
+User *-- Pass
+
+@enduml

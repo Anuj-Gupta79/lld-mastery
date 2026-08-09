@@ -1,0 +1,7 @@
+package com.lld.problems.library.code.exceptions;
+
+public class BookNotFoundException extends RuntimeException {
+    public BookNotFoundException(String message) {
+        super(message);
+    }
+}

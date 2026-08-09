@@ -1,0 +1,44 @@
+@startuml
+title Borrow Book
+
+participant Main
+participant Library
+participant Transaction
+
+Main -> Library: borrowBook(rentalType, userId, bookId)
+Library -> Library: getUser(userId)
+
+break user not found
+    Library --> Main: throws UserNotFoundException
+end
+
+Library -> Library: passValidation(user)
+break pass expired
+    Library --> Main: throws PassExpiredException
+end
+
+Library -> Library: getBook(bookId)
+break book not found
+    Library --> Main: throws BookNotFoundException
+end
+
+Library -> Library: getBookItem(book)
+break no available bookItem
+    Library --> Main: throws BookUnAvailableException
+end
+
+Library -> Library: borrowLimitValidation(user)
+break currBookHeld >= maxBooksAllowed
+    Library --> Main: throws BorrowLimitExceedsException
+end
+
+create Transaction
+Library -> Transaction: new(paymentService)
+Library -> Transaction: recordBorrowBook(rentalType, bookItem)
+Transaction --> Library: Receipt
+
+Library -> Library: updateBookItemStatus(ALLOCATE, bookItemId)
+Library -> Library: user.updateCurrentBooksHeld(1)
+Library --> Main: Receipt
+
+@enduml

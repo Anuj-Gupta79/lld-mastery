@@ -1,0 +1,51 @@
+@startuml
+title Return Book (Final - synced to code)
+
+participant Main
+participant Library
+participant Transaction
+participant PaymentService
+
+Main -> Library: returnBook(receipt, userId)
+
+Library -> Library: getUser(userId)
+break user not found
+    Library --> Main: throws UserNotFoundException
+end
+
+Library -> Library: getTransaction(receipt.transactionId)
+break transaction not found
+    Library --> Main: throws TransactionNotFoundException
+end
+
+Library -> Library: getBookItem(receipt.bookItemId)
+break bookItem not found
+    Library --> Main: throws BookItemNotFoundException
+end
+
+Library -> Transaction: recordReturnBook(pass, bookItem, latePenaltyFee, damagePenaltyFee)
+
+Transaction -> Transaction: getTotalPenaltyAmount(pass, bookItem, latePenaltyFee, damagePenaltyFee)
+activate Transaction
+    note right: damage fee added directly (flat add, no sub-method);\nlate fee only if rentalType == BORROW, via getLatePenaltyAmount(pass)
+deactivate Transaction
+
+alt totalPenalty > 0
+    Transaction -> PaymentService: processPayment(totalPenalty)
+    PaymentService --> Transaction: void
+end
+
+Transaction -> Transaction: receipt.updatePenaltyAmount(totalPenalty)
+Transaction -> Transaction: receipt.setReturnTime()
+Transaction --> Library: Receipt
+
+alt bookItem status == ALLOCATE
+    Library -> Library: updateBookItemStatus(AVAILABLE, bookItemId)
+else bookItem status == DAMAGE
+    Library -> Library: removeBookItem(bookItemId)
+end
+
+Library -> Library: user.updateCurrentBooksHeld(-1)
+Library --> Main: Receipt
+
+@enduml
