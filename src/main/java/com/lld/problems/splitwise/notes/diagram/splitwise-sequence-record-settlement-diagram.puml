@@ -1,0 +1,42 @@
+@startuml
+title Splitwise sequence - record settlement
+
+participant Main
+participant Group
+participant Settlement
+participant ExpenseLedgerService
+participant AuditLogService
+participant AuditLog
+participant Notification
+participant User
+
+Main -> Group: recordSettlement(actingUserId, payerId, payeeId, amount, paymentType)
+
+Group -> ExpenseLedgerService: getBalance(payerId, payeeId)
+ExpenseLedgerService --> Group: currentBalance
+
+break amount > currentBalance
+    Group --> Main: throw InvalidSettlementException
+end
+
+Group -> Settlement **: create(payerId, payeeId, amount, paymentType)
+
+Group -> Group: settlements.add(settlement)
+
+Group -> ExpenseLedgerService: updateBalance(settlement)
+ExpenseLedgerService --> Group: void
+
+Group -> AuditLog **: create("SETTLEMENT_RECORDED", actingUserId)
+Group -> AuditLogService: addLog(auditLog)
+AuditLogService --> Group: void
+
+Group -> Notification **: create(auditLog.getDetails(), groupId)
+Group -> Group: notifyObservers(notification)
+
+loop for each member in users
+    Group -> User: update(notification)
+end
+
+Group --> Main: settlement
+
+@enduml

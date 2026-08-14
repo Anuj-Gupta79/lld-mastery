@@ -1,0 +1,164 @@
+@startuml
+title Splitwise Class Diagram
+
+interface Observer {
+    +update(notification: Notification): void
+}
+
+class User{
+    -private String userId
+    -private String name
+    -private String email
+    -private String phone
+}
+
+interface Subject {
+    +notifyObservers(notification: Notification): void
+}
+
+class Group {
+    -private String groupId
+    -private String groupName
+    -private ExpenseLedgerService expenseLedgerService
+    -private AuditLogService auditLogService
+    -private List<User> users
+    -private List<Expense> expenses
+    -private List<Settlement> settlements
+
+    +addMember(user: User): void
+    +removeMember(user: User): void
+    +addExpense(actingUserId: String, paidByUserId: String, amount: double, description: String, participantIds: List<String>, strategy: ExpenseStrategy): Expense
+    +recordSettlement(actingUserId: String, payerId: String, payeeId: String, amount: double, paymentType: PaymentType): Settlement
+    +canBeDeleted(): boolean
+    +simplifyDebt(): List<SuggestedSettlement>
+    +notifyObservers(notification: Notification): void
+    +getGroupId(): String
+    +getGroupName(): String
+    +getExpenseLedgerService(): ExpenseLedgerService
+    +getAuditLogService(): AuditLogService
+    +getUsers(): List<User>
+    +getExpenses(): List<Expense>
+    +getSettlements(): List<Settlement>
+}
+
+interface ExpenseStrategy {
+    +applyStrategy(amount: double, participantIds: List<String>, expenseId: String): List<Split>
+}
+
+class PercentageExpenseStrategy{
+}
+
+class EqualExpenseStrategy{
+}
+
+class ExactExpenseStrategy{
+}
+
+class Expense{
+    -private String expenseId
+    -private double amount
+    -private String paidBy
+    -private String description
+    -private ExpenseStrategy strategy
+    -private List<Split> splits
+
+    +getAllSplits(): List<Split>
+}
+
+class Split {
+    -private String userId
+    -private String expenseId
+    -private double amountOwed
+}
+
+class Settlement{
+    -private String settlementId
+    -private String payer
+    -private String payee
+    -private double amount
+    -private PaymentType paymentType
+    -private LocalDateTime timeStamp
+}
+
+class SuggestedSettlement {
+    -private String payerId
+    -private String payeeId
+    -private double amount
+}
+
+class ExpenseLedgerService {
+    -private Map<String, Double> balances
+
+    +updateBalance(expense: Expense): void
+    +updateBalance(settlement: Settlement): void
+    +getBalance(userId1: String, userId2: String): double
+    +getNetBalance(userId: String): double
+    +allBalanceZero(): boolean
+    +hasOutstandingBalance(userId: String): boolean
+}
+
+class DebtSimplificationService{
+    +simplify(group: Group): List<SuggestedSettlement>
+}
+
+class AuditLog {
+    -private String logId
+    -private LocalDateTime timeStamp
+    -private String action
+    -private String actorId
+
+    +getDetails(): String
+}
+
+class AuditLogService {
+    -private List<AuditLog> auditLogs
+
+    +addLog(log: AuditLog): void
+    +getAllLogs(): List<AuditLog>
+}
+
+class Notification {
+    -private String message
+    -private String groupId
+    -private LocalDateTime timestamp
+}
+
+enum PaymentType {
+    CASH
+    CARD
+    UPI
+    CHEQUE
+}
+
+class Splitwise {
+    -private Map<String, User> users
+    -private Map<String, Group> groups
+
+    +registerUser(user: User): void
+    +createGroup(id: String, name: String): Group
+    +deleteGroup(groupId: String): void
+    +deleteUser(userId: String): void
+}
+
+Splitwise *-- Group
+Splitwise *-- User
+Group ..|> Subject
+Group *-- Expense
+Group *-- Notification
+Group *-- AuditLogService
+Group *-- ExpenseLedgerService
+Group *-- Settlement
+Group o-- User
+Group ..> DebtSimplificationService
+DebtSimplificationService ..> SuggestedSettlement
+Expense *-- Split
+Expense o-- ExpenseStrategy
+User ..|> Observer
+ExactExpenseStrategy ..|> ExpenseStrategy
+PercentageExpenseStrategy ..|> ExpenseStrategy
+EqualExpenseStrategy ..|> ExpenseStrategy
+User --> Notification
+Settlement --> PaymentType
+AuditLogService *-- AuditLog
+
+@enduml

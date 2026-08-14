@@ -1,0 +1,51 @@
+@startuml
+title Splitwise sequence - add expense
+
+participant Main
+participant Group
+participant Expense
+participant ExpenseStrategy
+participant ExpenseLedgerService
+participant AuditLogService
+participant AuditLog
+participant Notification
+participant User
+
+Main -> Group: addExpense(actingUserId, paidByUserId, amount, description, participantIds, strategy)
+
+break participantIds not all members of Group
+    Group --> Main: throw InvalidParticipantException
+end
+
+Group -> Expense **: create(amount, paidByUserId, description, strategy, participantIds)
+activate Expense
+
+Expense -> ExpenseStrategy: applyStrategy(amount, participantIds, expenseId)
+
+break split amounts/percentages don't sum correctly
+    ExpenseStrategy --> Expense: throw InvalidSplitException
+    Expense --> Group: propagate exception
+    Group --> Main: throw InvalidSplitException
+end
+
+ExpenseStrategy --> Expense: List<Split>
+deactivate Expense
+
+Group -> Group: expenses.add(expense)
+
+Group -> ExpenseLedgerService: updateBalance(expense)
+ExpenseLedgerService --> Group: void
+
+Group -> AuditLog **: create("EXPENSE_ADDED", actingUserId)
+Group -> AuditLogService: addLog(auditLog)
+AuditLogService --> Group: void
+
+Group -> Notification **: create(auditLog.getDetails(), groupId)
+Group -> Group: notifyObservers(notification)
+
+loop for each member in users
+    Group -> User: update(notification)
+end
+
+Group --> Main: expense
+@enduml
