@@ -1,0 +1,37 @@
+@startuml
+title Cancel Booking
+
+actor User
+participant BookMyShow
+participant CancellationService
+participant Booking
+participant ShowSeat
+participant Show
+participant Notification
+
+User -> BookMyShow: cancelBooking(bookingId)
+BookMyShow -> BookMyShow: resolve Booking from bookings map
+BookMyShow -> CancellationService: cancelBooking(booking)
+
+CancellationService -> Booking: getShow().getStarTime()
+CancellationService -> CancellationService: calculate refund tier\n(>=2 days: 80% refund, <2 days: no refund)
+
+loop for each ShowSeat in booking.getShowSeats()
+    CancellationService -> ShowSeat: release()
+end
+
+CancellationService -> Booking: updateStatus(CANCELLED)
+
+CancellationService -> Notification: new Notification(refund message, user)
+CancellationService -> User: update(refundNotification)
+
+CancellationService -> Booking: getShow()
+CancellationService -> Show: notifyWaitList(message: String)
+Show -> Show: poll first user from waitList queue
+Show -> Notification: new Notification(message, user)
+Show -> User: update(notification)
+
+CancellationService --> BookMyShow: void
+BookMyShow --> User: cancellation confirmed
+
+@enduml

@@ -1,0 +1,240 @@
+@startuml
+title BookMyShow Class Diagram
+
+class BookMyShow {
+    -venues: Map<String, Venue>
+    -users: Map<String, User>
+    -vendors: Map<String, Vendor>
+    -bookings: Map<String, Booking>
+
+    +registerUser(user: User): void
+    +deleteUser(userId: String): void
+    +registerVendor(vendor: Vendor): void
+    +addVenue(vendorId: String, venue: Venue): void
+    +updateVenue(vendorId: String, venueId: String, request: VenueUpdateRequest): void
+    +bookShow(userId: String, showId: String, venueId: String, seatIds: List<String>): Ticket
+    +cancelBooking(bookingId: String): void
+    +searchShow(query: String): List<Show>
+}
+
+class Vendor {
+    -id: String
+    -name: String
+    -venues: Map<String, Venue>
+
+    +addVenue(venue: Venue): void
+    +removeVenue(venueId: String): void
+    +updateVenue(venueId: String, request: VenueUpdateRequest): void
+    +addShow(venueId: String, show: Show): void
+    +removeShow(venueId: String, showId: String): void
+    +updateShow(venueId: String, showId: String, request: ShowUpdateRequest): void
+}
+
+class Venue {
+    -id: String
+    -name: String
+    -address: String
+    -seats: Map<String, Seat>
+    -shows: Map<String, Show>
+
+    +addSeat(seat: Seat): void
+    +removeSeat(seatId: String): void
+    +updateSeat(seatId: String, request: SeatUpdateRequest): void
+    +getSeats(): List<Seat>
+    +getShows(): List<Show>
+    +getShow(showId: String): Show
+    +addShow(show: Show): void
+    +removeShow(showId: String): void
+    +updateShowDetails(showId: String, request: ShowUpdateRequest): void
+    +updateVenueDetails(request: VenueUpdateRequest): void
+}
+
+class Seat {
+    -id: String
+    -row: int
+    -seatNumber: int
+    -type: SeatType
+
+    +updateSeatDetails(request: SeatUpdateRequest): void
+}
+
+class SeatUpdateRequest {
+    -row: Integer
+    -seatNumber: Integer
+    -type: SeatType
+}
+
+class VenueUpdateRequest {
+    -name: String
+    -address: String
+}
+
+class ShowUpdateRequest {
+    -name: String
+    -showType: ShowType
+    -startTime: LocalDateTime
+    -endTime: LocalDateTime
+}
+
+interface Subject {
+    +notifyObservers(notification: Notification): void
+    +addObserver(user: User): void
+    +removeObserver(userId: String): void
+}
+
+interface Observer {
+    +update(notification: Notification): void
+}
+
+class Show {
+    -id: String
+    -name: String
+    -showType: ShowType
+    -basePrice: double
+    -startTime: LocalDateTime
+    -endTime: LocalDateTime
+    -venue: Venue
+    -observers: List<User>
+    -waitList: Queue<User>
+    -showSeats: Map<String, ShowSeat>
+
+    +generateShowSeats(): void
+    +getShowSeats(): List<ShowSeat>
+    +getShowSeats(seatIds: List<String>): Map<String, ShowSeat>
+    +getAvailableShowSeats(): List<ShowSeat>
+    +updateShowDetails(request: ShowUpdateRequest): void
+    +joinWaitList(user: User): void
+    +leaveWaitList(userId: String): void
+    +notifyWaitList(message: String): void
+    +notifyObservers(notification: Notification): void
+    +addObserver(user: User): void
+    +removeObserver(userId: String): void
+}
+
+class ShowSeat {
+    -id: String
+    -seat: Seat
+    -available: boolean
+    -lockedAt: LocalDateTime
+    -price: double
+
+    +lock(): void
+    +isExpiredLock(): boolean
+    +isAvailable(): boolean
+    +release(): void
+}
+
+class User {
+    -id: String
+    -name: String
+    -email: String
+    -active: boolean
+
+    +deactivate(): void
+    +update(notification: Notification): void
+}
+
+class Booking {
+    -id: String
+    -show: Show
+    -showSeats: Map<String, ShowSeat>
+    -user: User
+    -bookingStatus: BookingStatus
+    -bookingTime: LocalDateTime
+    -price: double
+
+    +updatePrice(price: double): void
+    +updateStatus(status: BookingStatus): void
+}
+
+class Ticket {
+    -id: String
+    -booking: Booking
+    -issuedAt: LocalDateTime
+}
+
+class Notification {
+    -id: String
+    -message: String
+    -timestamp: LocalDateTime
+    -recipient: User
+}
+
+class PaymentService {
+    +processPayment(amount: double): boolean
+}
+
+class CancellationService {
+    +cancelBooking(booking: Booking): void
+}
+
+class BookingService {
+    -paymentService: PaymentService
+
+    +bookShow(user: User, show: Show, requestedSeats: Map<String, ShowSeat>): Ticket
+}
+
+class BookMyShowConstants {
+    +LOCK_EXPIRATION_MINUTES: int
+    +SEAT_PRICE_SHARE: Map<SeatType, Double>
+}
+
+enum BookingStatus {
+    PENDING
+    CONFIRMED
+    CANCELLED
+    FAILED
+}
+
+enum ShowType {
+    MOVIE
+    CONCERT
+    STANDUP
+    DRAMA
+}
+
+enum SeatType {
+    REGULAR
+    PREMIUM
+    VIP
+}
+
+Vendor "1" *-- "many" Venue
+Venue "1" *-- "many" Seat
+Venue "1" o-- "many" Show
+Show "1" *-- "many" ShowSeat
+ShowSeat "many" o-- "1" Seat
+Show ..|> Subject
+User ..|> Observer
+Show "many" o-- "many" User : observers
+Show "many" o-- "many" User : waitList
+Booking "many" o-- "1" User
+Booking "many" o-- "1" Show
+Booking "many" o-- "many" ShowSeat
+Ticket "1" *-- "1" Booking
+Notification "many" o-- "1" User
+BookMyShow "1" o-- "many" Vendor
+BookMyShow "1" o-- "many" User
+BookMyShow "1" o-- "many" Venue
+BookMyShow "1" o-- "many" Booking
+BookMyShow "1" *-- "1" BookingService
+BookMyShow "1" *-- "1" CancellationService
+BookingService "1" *-- "1" PaymentService
+BookingService ..> Show
+BookingService ..> ShowSeat
+BookingService ..> User
+BookingService ..> Booking
+BookingService ..> Ticket
+CancellationService ..> Booking
+CancellationService ..> ShowSeat
+CancellationService ..> Show
+CancellationService ..> Notification
+Venue ..> SeatUpdateRequest
+Venue ..> VenueUpdateRequest
+Venue ..> ShowUpdateRequest
+Show ..> BookMyShowConstants
+Booking --> BookingStatus
+Seat --> SeatType
+Show --> ShowType
+
+@enduml

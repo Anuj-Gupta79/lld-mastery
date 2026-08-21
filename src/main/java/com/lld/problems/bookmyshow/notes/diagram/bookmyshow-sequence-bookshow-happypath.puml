@@ -1,0 +1,46 @@
+@startuml
+title Book Show - Happy Path
+
+actor User
+participant BookMyShow
+participant Venue
+participant Show
+participant BookingService
+participant ShowSeat
+participant PaymentService
+participant Booking
+participant Ticket
+
+User -> BookMyShow: bookShow(userId, showId, venueId, seatIds)
+BookMyShow -> BookMyShow: resolve User from users map
+BookMyShow -> Venue: getShow(showId)
+Venue --> BookMyShow: show
+BookMyShow -> Show: getShowSeats(seatIds)
+Show --> BookMyShow: requestedSeats: Map<String, ShowSeat>
+
+BookMyShow -> BookingService: bookShow(user, show, requestedSeats)
+
+BookingService -> Booking: new Booking(id, show, requestedSeats, user)\n[status = PENDING]
+
+loop for each ShowSeat in requestedSeats
+    BookingService -> ShowSeat: isAvailable()
+    ShowSeat -> ShowSeat: isExpiredLock()
+    ShowSeat --> BookingService: true
+end
+
+loop for each ShowSeat in requestedSeats
+    BookingService -> ShowSeat: lock()
+    BookingService -> Booking: updatePrice(showSeat.getPrice())
+end
+
+BookingService -> PaymentService: processPayment(booking.getPrice())
+PaymentService --> BookingService: true
+
+BookingService -> Booking: updateStatus(CONFIRMED)
+BookingService -> Show: addObserver(user)
+BookingService -> Ticket: new Ticket(booking)
+BookingService --> BookMyShow: ticket
+BookMyShow -> BookMyShow: bookings.put(booking.getId(), booking)
+BookMyShow --> User: ticket
+
+@enduml

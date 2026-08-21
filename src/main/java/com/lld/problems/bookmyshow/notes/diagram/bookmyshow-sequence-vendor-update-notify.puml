@@ -1,0 +1,23 @@
+@startuml
+title Vendor Updates Show Details
+
+actor Vendor
+participant Venue
+participant Show
+participant Notification
+participant User
+
+Vendor -> Venue: updateShowDetails(showId, request)
+Venue -> Show: updateShowDetails(request)
+
+Show -> Show: apply non-null fields from request
+Show -> Notification: new Notification(update message)
+
+loop for each User in observers
+    Show -> User: update(notification)
+end
+
+Show --> Venue: void
+Venue --> Vendor: void
+
+@enduml
