@@ -1,0 +1,49 @@
+@startuml ProcessRider
+title processRider - Broadcast matching with accept/reject race
+
+actor Rider as riderActor
+participant RideBooking
+participant DriverMatchingStrategy
+participant Ride
+participant "Driver (Observer)" as DriverObs
+
+riderActor -> RideBooking: processRider(pickup, drop, rider, vehicleType)
+RideBooking -> RideBooking: riders.get(rider.id)
+alt rider not found
+    RideBooking --> riderActor: throw RiderNotFoundException
+end
+
+RideBooking -> Ride: new Ride(vehicleType, rider, pickup, drop, estimatedPrice)
+RideBooking -> DriverMatchingStrategy: findDriver(vehicleType, pickup, allDrivers)
+note right of DriverMatchingStrategy
+  Filters by: type match, AVAILABLE status,
+  distance <= MAX_MATCH_RADIUS.
+  Returns List<Driver> candidates -
+  no ranking, no single "best" pick.
+end note
+DriverMatchingStrategy --> RideBooking: candidateList
+
+alt candidateList is empty
+    RideBooking --> riderActor: throw NoDriverAvailableException
+end
+
+loop for each candidate driver
+    RideBooking -> Ride: addObserver(driver)
+end
+
+RideBooking -> Ride: notifyObservers()
+loop for each observer
+    Ride -> DriverObs: update(ride)
+    DriverObs -> Ride: tryAccept(this)
+    note right of Ride
+      synchronized: check-and-set status
+      atomically. First PENDING->MATCHED
+      wins; all later calls see MATCHED
+      and return false.
+    end note
+end
+
+RideBooking -> RideBooking: rides.put(ride.id, ride)
+RideBooking --> riderActor: return ride
+
+@enduml

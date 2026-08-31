@@ -1,0 +1,30 @@
+@startuml CompleteRide
+title completeRide - Driver ends the trip
+
+actor Driver as driverActor
+participant RideBooking
+participant Ride
+participant PaymentService
+
+driverActor -> RideBooking: completeRide(rideId, tip)
+RideBooking -> RideBooking: rides.get(rideId)
+RideBooking -> Ride: getStatus()
+alt status != STARTED
+    RideBooking --> driverActor: throw InvalidCompleteException
+end
+
+RideBooking -> Ride: setDropTime(now)
+RideBooking -> Ride: getDriver()
+RideBooking -> Driver: updateLocation(dropLocation)
+RideBooking -> Ride: setTip(tip)
+RideBooking -> PaymentService: processPayment(tip + estimatedPrice)
+RideBooking -> Ride: transitTo(COMPLETED)
+RideBooking -> Driver: updateStatus(AVAILABLE)
+RideBooking --> driverActor: void
+
+note right of RideBooking
+  completeRide(rideId) overload
+  delegates here with tip = 0.0
+end note
+
+@enduml

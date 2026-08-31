@@ -1,0 +1,26 @@
+@startuml CancelRide
+title cancelRide - Rider cancels before pickup
+
+actor Rider as riderActor
+participant RideBooking
+participant Ride
+participant Driver
+
+riderActor -> RideBooking: cancelRide(rideId)
+RideBooking -> RideBooking: rides.get(rideId)
+RideBooking -> Ride: getStatus()
+alt status not in {PENDING, MATCHED}
+    RideBooking --> riderActor: throw InvalidCancelException
+end
+
+alt status == MATCHED
+    RideBooking -> Ride: getDriver()
+    RideBooking -> Driver: updateStatus(AVAILABLE)
+else status == PENDING
+    RideBooking -> RideBooking: skip driver reset - driver is null
+end
+
+RideBooking -> Ride: transitTo(CANCELLED)
+RideBooking --> riderActor: void
+
+@enduml

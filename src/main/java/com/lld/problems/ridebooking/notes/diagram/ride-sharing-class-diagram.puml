@@ -1,0 +1,156 @@
+@startuml
+title Ride Sharing Class Diagram
+
+enum VehicleType {
+    MINI
+    SEDAN
+    SUV
+}
+
+enum DriverStatus {
+    AVAILABLE
+    ON_TRIP
+    OFFLINE
+}
+
+enum RideStatus {
+    PENDING
+    MATCHED
+    STARTED
+    COMPLETED
+    CANCELLED
+}
+
+class Location {
+    -longitude: double
+    -latitude: double
+}
+
+class Vehicle {
+    -id: String
+    -vehicleNumber: String
+    -type: VehicleType
+}
+
+class Driver {
+    -id: String
+    -name: String
+    -licenseNumber: String
+    -vehicle: Vehicle
+    -location: Location
+    -status: DriverStatus
+    -rating: double
+    -numberOfRatings: int
+
+    +updateRating(rating: double): void
+    +update(ride: Ride): void
+}
+
+class Rider {
+    -id: String
+    -name: String
+    -rating: double
+    -numberOfRatings: int
+
+    +updateRating(rating: double): void
+}
+
+class Ride {
+    -id: String
+    -driver: Driver
+    -rider: Rider
+    -requestedType: VehicleType
+    -pickLocation: Location
+    -dropLocation: Location
+    -pickTime: LocalDateTime
+    -dropTime: LocalDateTime
+    -status: RideStatus
+    -estimatedPrice: double
+    -tip: Double
+    -riderToDriverRating: Double
+    -driverToRiderRating: Double
+    -observers: List<Observer>
+
+    +transitTo(status: RideStatus): void
+    +tryAccept(driver: Driver): boolean
+    +notifyObservers(): void
+    +addObserver(observer: Observer): void
+    +removeObserver(observer: Observer): void
+}
+
+class Admin {
+    -id: String
+    -name: String
+    -rideBooking: RideBooking
+
+    +updatePrice(type: VehicleType, price: double): void
+    +updateSurgeMultiplier(multiplier: double): void
+}
+
+interface Observer {
+    +update(ride: Ride): void
+}
+
+interface Subject {
+    +notifyObservers(): void
+    +addObserver(observer: Observer): void
+    +removeObserver(observer: Observer): void
+}
+
+interface DriverMatchingStrategy {
+    +findDriver(vehicleType: VehicleType, pickLocation: Location, drivers: List<Driver>): List<Driver>
+}
+
+class NearestDriverMatchingStrategy {
+    -MAX_MATCH_RADIUS: double
+}
+
+class PaymentService {
+    +processPayment(amount: double): void
+}
+
+class RideBooking {
+    -rides: Map<String, Ride>
+    -drivers: Map<String, Driver>
+    -riders: Map<String, Rider>
+    -basePrice: Map<VehicleType, Double>
+    -surgeMultiplier: double
+    -paymentService: PaymentService
+    -strategy: DriverMatchingStrategy
+
+    +registerDriver(driver: Driver): void
+    +registerRider(rider: Rider): void
+    +processRider(pickLocation: Location, dropLocation: Location, rider: Rider, vehicleType: VehicleType): Ride
+    +startRide(rideId: String): void
+    +completeRide(rideId: String): void
+    +completeRide(rideId: String, tip: double): void
+    +cancelRide(rideId: String): void
+    +rateRider(rideId: String, rating: double): void
+    +rateDriver(rideId: String, rating: double): void
+    +updateBasePrice(vehicleType: VehicleType, price: double): void
+    +updateSurgeMultiplier(multiplier: double): void
+}
+
+RideBooking *-- PaymentService
+RideBooking *-- DriverMatchingStrategy
+Driver *-- Vehicle
+Driver *-- Location
+Ride *-- Location
+
+NearestDriverMatchingStrategy ..|> DriverMatchingStrategy
+Ride ..|> Subject
+Driver ..|> Observer
+Ride o-- Observer
+
+RideBooking o-- Driver
+RideBooking o-- Rider
+RideBooking o-- Ride
+
+Admin --> RideBooking
+Ride --> Rider
+Ride --> Driver
+Vehicle --> VehicleType
+Driver --> DriverStatus
+Ride --> RideStatus
+
+@enduml

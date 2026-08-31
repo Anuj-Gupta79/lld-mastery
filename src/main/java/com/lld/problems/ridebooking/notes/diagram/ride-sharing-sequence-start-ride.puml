@@ -1,0 +1,21 @@
+@startuml StartRide
+title startRide - Driver begins the trip
+
+actor Driver as driverActor
+participant RideBooking
+participant Ride
+
+driverActor -> RideBooking: startRide(rideId)
+RideBooking -> RideBooking: rides.get(rideId)
+RideBooking -> Ride: getStatus()
+alt status != MATCHED
+    RideBooking --> driverActor: throw InvalidStartException
+end
+
+RideBooking -> Ride: setPickTime(now)
+RideBooking -> Ride: getDriver()
+RideBooking -> Driver: updateLocation(pickLocation)
+RideBooking -> Ride: transitTo(STARTED)
+RideBooking --> driverActor: void
+
+@enduml
