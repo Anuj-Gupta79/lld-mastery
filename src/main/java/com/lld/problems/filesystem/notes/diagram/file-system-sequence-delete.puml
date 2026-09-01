@@ -1,0 +1,28 @@
+@startuml
+title delete() - Cascading Deletion (Composite)
+
+actor Client
+participant "sub: Directory" as sub
+participant "b.txt: File" as fileB
+participant "root: Directory" as root
+
+Client -> sub: delete()
+activate sub
+sub -> sub: check parent != null\n(else InvalidDirectoryException)
+
+sub -> fileB: delete()
+activate fileB
+fileB -> fileB: check parent != null\n(else IllegalStateException)
+fileB -> sub: remove(this)
+activate sub
+sub -> fileB: setParent(null)
+deactivate sub
+deactivate fileB
+
+sub -> root: remove(this)
+activate root
+root -> root: children.remove(sub)
+root -> sub: setParent(null)
+deactivate root
+deactivate sub
+@enduml

@@ -1,0 +1,28 @@
+@startuml
+title getSize() - Recursive Traversal (Composite)
+
+actor Client
+participant "root: Directory" as root
+participant "sub: Directory" as sub
+participant "a.txt: File" as fileA
+participant "b.txt: File" as fileB
+
+Client -> root: getSize()
+activate root
+root -> fileA: getSize()
+activate fileA
+fileA --> root: return size
+deactivate fileA
+
+root -> sub: getSize()
+activate sub
+sub -> fileB: getSize()
+activate fileB
+fileB --> sub: return size
+deactivate fileB
+sub --> root: return sum(children sizes)
+deactivate sub
+
+root --> Client: return total size
+deactivate root
+@enduml

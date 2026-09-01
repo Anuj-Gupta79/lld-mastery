@@ -1,0 +1,42 @@
+@startuml
+title File System Class Diagram
+
+interface FileSystemComponent {
+    +getName(): String
+    +getSize(): int
+    +delete(): void
+    +rename(name: String): void
+    +setParent(parent: Directory): void
+    +getParent(): Directory
+}
+
+abstract AbstractFileSystemComponent {
+    #parent: Directory
+    #name: String
+    
+    +getName(): String
+    +rename(name: String): void
+    +getSize(): int {{Abstract}}
+    +delete(): void {{Abstract}}
+}
+
+class File {
+    +getSize(): int
+    +delete(): void
+}
+
+class Directory {
+    -children: List<FileSystemComponent>
+
+    +getSize(): int
+    +delete(): void
+    +add(child: FileSystemComponent): void
+    +remove(child: FileSystemComponent): void
+}
+
+AbstractFileSystemComponent ..|> FileSystemComponent
+File --|> AbstractFileSystemComponent
+Directory --|> AbstractFileSystemComponent
+Directory *-- FileSystemComponent
+
+@enduml
