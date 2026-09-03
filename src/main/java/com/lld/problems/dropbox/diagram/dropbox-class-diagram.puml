@@ -1,0 +1,107 @@
+@startuml
+title Dropbox Class Diagram
+
+interface Observer {
+    +update(event: ChangeEvent): void
+}
+
+interface Subject {
+    +notifyObservers(): void
+    +addObserver(user: User): void
+    +removeObserver(user: User): void
+    +getObservers(): Set<User>
+    +getDirectObservers(): Set<User>
+}
+
+interface FileSystemComponent {
+    +getName(): String
+    +rename(String name): void
+    +getSize(): int
+    +getParent(): Directory
+    +setParent(parent: Directory): void
+    +delete(): void
+}
+
+abstract AbstractFileSystemComponent {
+    #name: String
+    #parent: Directory
+
+    +getName(): String
+    +getParent(): Directory
+    +setParent(parent: Directory): void
+    #collectAncestorObservers(): Set<User>
+    +getSize(): int {Abstract}
+    +delete(): void {Abstract}
+}
+
+abstract class ChangeEvent {
+    -componentName: String
+    +getComponentName(): String
+}
+
+class FileChangeEvent {
+    -version: Version
+    +getVersion(): Version
+}
+
+class DirectoryChangeEvent {
+}
+
+class File {
+    -versions: List<Version>
+    -currentVersion: Version
+    -directObservers: Set<User>
+    -owner: User
+    -size: int
+
+    +getSize(): int
+    +delete(): void
+    +rename(name: String): void
+    +getObservers(): Set<User>
+    +notifyObservers(): void
+    +updateVersion(version: Version): void
+}
+
+class Directory {
+    -children: List<FileSystemComponent>
+    -directObservers: Set<User>
+
+    +getSize(): int
+    +delete(): void
+    +rename(name: String): void
+    +add(child: FileSystemComponent): void
+    +remove(child: FileSystemComponent): void
+    +getObservers(): Set<User>
+    +notifyObservers(): void
+}
+
+class Version {
+    -versionNumber: int
+    -timestamp: LocalDateTime
+}
+
+class User {
+    -name: String
+}
+
+AbstractFileSystemComponent ..|> FileSystemComponent
+ChangeEvent <|-- FileChangeEvent
+ChangeEvent <|-- DirectoryChangeEvent
+
+File ..|> Subject
+File --|> AbstractFileSystemComponent
+File *-- Version
+File --> "1" User : owner
+File --> "0..*" User : subscribers
+File ..> FileChangeEvent : creates
+
+Directory ..|> Subject
+Directory *-- FileSystemComponent
+Directory --|> AbstractFileSystemComponent
+Directory --> "0..*" User : subscribers
+Directory ..> DirectoryChangeEvent : creates
+
+User ..|> Observer
+Observer ..> ChangeEvent : receives
+
+@enduml

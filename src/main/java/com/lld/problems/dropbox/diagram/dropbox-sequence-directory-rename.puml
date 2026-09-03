@@ -1,0 +1,27 @@
+@startuml
+title Directory Rename -> Notify (Own Direct + Ancestors, Descendants Excluded)
+
+actor Client
+participant "sub: Directory" as Sub
+participant "root: Directory" as Root
+participant "rootSubscriber: User" as RU
+
+Client -> Sub: rename("sub-renamed")
+activate Sub
+Sub -> Sub: name = "sub-renamed"
+Sub -> Sub: notifyObservers()
+activate Sub
+Sub -> Sub: observers = new HashSet(directObservers) (empty)
+Sub -> Sub: collectAncestorObservers()
+activate Sub
+Sub -> Root: getDirectObservers()
+Root --> Sub: {rootSubscriber}
+deactivate Sub
+Sub -> Sub: observers.addAll(ancestorObservers)
+loop for each observer in observers
+    Sub -> RU: update(DirectoryChangeEvent)
+end
+note right: file1's subscriber is NOT notified —\nfile1 is a descendant, not an ancestor,\nand was never part of this traversal.
+deactivate Sub
+deactivate Sub
+@enduml

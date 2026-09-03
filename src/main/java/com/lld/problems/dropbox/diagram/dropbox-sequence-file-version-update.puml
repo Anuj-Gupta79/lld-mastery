@@ -1,0 +1,31 @@
+@startuml
+title File Version Update -> Notify (Own Direct + Ancestor Walk)
+
+actor Client
+participant "file: File" as File
+participant "sub: Directory" as Sub
+participant "root: Directory" as Root
+participant "fileSubscriber: User" as FU
+participant "rootSubscriber: User" as RU
+
+Client -> File: updateVersion(v2)
+activate File
+File -> File: versions.add(v2)\ncurrentVersion = v2
+File -> File: notifyObservers()
+activate File
+File -> File: observers = new HashSet(directObservers)
+File -> File: collectAncestorObservers()
+activate File
+File -> Sub: getDirectObservers()
+Sub --> File: sub's direct (empty in this example)
+File -> Root: getDirectObservers()
+Root --> File: root's direct = {rootSubscriber}
+deactivate File
+File -> File: observers.addAll(ancestorObservers)
+loop for each observer in observers
+    File -> FU: update(FileChangeEvent)
+    File -> RU: update(FileChangeEvent)
+end
+deactivate File
+deactivate File
+@enduml
