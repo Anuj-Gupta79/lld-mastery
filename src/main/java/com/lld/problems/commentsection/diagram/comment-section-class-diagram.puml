@@ -1,0 +1,41 @@
+@startuml
+title Comment Section Class Diagram
+
+class User {
+    -userId: String
+    -userName:String
+}
+
+class Content {
+    -contentId: String
+    -comments: List<Comment>
+
+    +addComment(comment: Comment): void
+    +getAllComments(): List<Comment>
+}
+
+class Comment {
+    -commentId: String
+    -message: String
+    -user: User
+    -replies: List<Comment>
+    -reactions: Map<String, ReactionType>
+    -deleted: boolean
+
+    +addReply(comment: Comment): void
+    +editComment(newMessage): void
+    +like(user: User): void
+    +dislike(user: User): void
+    +delete(): void
+}
+
+enum ReactionType {
+    LIKE,
+    DISLIKE
+}
+
+Content *-- Comment
+Comment *-- Comment
+Comment --> User
+
+@enduml
