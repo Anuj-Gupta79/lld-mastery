@@ -1,0 +1,36 @@
+@startuml
+title Cash Dispenser Flow Diagram
+
+participant Client
+participant CashDispenser as CD
+participant "Handler(2000)" as H1
+participant "Handler(500)" as H2
+participant "Handler(100)" as H3
+
+Client -> CD : withdraw(amount)
+CD -> H1 : dispense(remainder)
+H1 -> H1 : compute notesToGive, reduce stock (tentative)
+H1 -> H2 : dispense(newRemainder)
+H2 -> H2 : compute notesToGive, reduce stock (tentative)
+H2 -> H3 : dispense(newRemainder)
+H3 -> H3 : compute notesToGive, reduce stock (tentative)
+
+alt remainder resolves to 0 at H3 (SUCCESS)
+    H3 --> H2 : DispenseResult(success=true, ownNotes)
+    H2 -> H2 : merge H3's result into own DispenseResult
+    H2 --> H1 : DispenseResult(success=true, mergedNotes)
+    H1 -> H1 : merge H2's result into own DispenseResult
+    H1 --> CD : DispenseResult(success=true, fullyMergedNotes)
+    CD --> Client : return dispensedNotes map
+else H3 cannot resolve remainder, no next handler (FAILURE)
+    H3 -> H3 : undo own stock reduction
+    H3 --> H2 : DispenseResult(success=false, remainder)
+    H2 -> H2 : discard own result, undo own stock reduction
+    H2 --> H1 : DispenseResult(success=false, remainder)
+    H1 -> H1 : discard own result, undo own stock reduction
+    H1 --> CD : DispenseResult(success=false, remainder)
+    CD -> CD : throw InsufficientDenominationException
+    CD --> Client : exception thrown
+end
+
+@enduml

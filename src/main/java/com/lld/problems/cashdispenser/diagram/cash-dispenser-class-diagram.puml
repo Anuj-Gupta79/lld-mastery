@@ -1,0 +1,41 @@
+@startuml
+title Cash Dispenser Class Diagram
+
+enum Denomination {
+    TWO_THOUSAND(2000)
+    FIVE_HUNDRED(500)
+    ONE_HUNDRED(100)
+    FIFTY(50)
+    TWENTY(20)
+    TEN(10)
+    FIVE(5)
+    TWO(2)
+    ONE(1)
+}
+
+class DispenseResult {
+    -success: boolean
+    -remainder: int
+    -dispensedNotes: Map<Denomination, Integer>
+}
+
+class DenominationHandler {
+    -denomination: Denomination
+    -stock: int
+    -next: DenominationHandler
+
+    +dispense(remainder: int): DispenseResult
+}
+
+class CashDispenser {
+    -headHandler: DenominationHandler
+
+    +withdraw(amount: int): Map<Denomination, Integer>
+}
+
+CashDispenser *-- DenominationHandler
+CashDispenser --> DispenseResult
+DenominationHandler o-- DenominationHandler
+DenominationHandler --> DispenseResult
+
+@enduml
