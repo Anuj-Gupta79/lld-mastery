@@ -1,0 +1,73 @@
+@startuml
+title Sequence Diagram - sendAlert(message, HIGH)
+
+actor Main
+participant NotificationService
+participant PushHandler
+participant EmailHandler
+participant SMSHandler
+participant RawNotification
+participant TagDecorator
+participant TrimDecorator
+
+Main -> NotificationService: sendAlert(message, HIGH)
+activate NotificationService
+
+NotificationService -> RawNotification: new RawNotification(message)
+activate RawNotification
+RawNotification --> NotificationService: rawNotification
+deactivate RawNotification
+
+NotificationService -> PushHandler: handle(HIGH, rawNotification)
+activate PushHandler
+PushHandler -> PushHandler: matches(HIGH)
+note right: returns false (Push = LOW only)
+PushHandler -> EmailHandler: handle(HIGH, rawNotification)
+activate EmailHandler
+EmailHandler -> EmailHandler: matches(HIGH)
+note right: returns false (Email = MEDIUM only)
+EmailHandler -> SMSHandler: handle(HIGH, rawNotification)
+activate SMSHandler
+SMSHandler -> SMSHandler: matches(HIGH)
+note right: returns true (SMS = HIGH)
+
+SMSHandler -> SMSHandler: decorate(rawNotification)
+activate SMSHandler
+SMSHandler -> TagDecorator: new TagDecorator(rawNotification)
+activate TagDecorator
+TagDecorator --> SMSHandler: tagDecorator
+deactivate TagDecorator
+SMSHandler -> TrimDecorator: new TrimDecorator(tagDecorator)
+activate TrimDecorator
+TrimDecorator --> SMSHandler: trimDecorator
+deactivate TrimDecorator
+SMSHandler --> SMSHandler: return trimDecorator
+deactivate SMSHandler
+
+SMSHandler -> TrimDecorator: format()
+activate TrimDecorator
+TrimDecorator -> TagDecorator: format()
+activate TagDecorator
+TagDecorator -> RawNotification: format()
+activate RawNotification
+RawNotification --> TagDecorator: message
+deactivate RawNotification
+TagDecorator --> TrimDecorator: "[URGENT] " + message
+deactivate TagDecorator
+TrimDecorator --> SMSHandler: trimmed to 150 chars
+deactivate TrimDecorator
+
+SMSHandler -> SMSHandler: send(formattedMessage)
+note right: simulates SMS dispatch
+
+SMSHandler --> EmailHandler: return
+deactivate SMSHandler
+EmailHandler --> PushHandler: return
+deactivate EmailHandler
+PushHandler --> NotificationService: return
+deactivate PushHandler
+
+NotificationService --> Main: return
+deactivate NotificationService
+
+@enduml

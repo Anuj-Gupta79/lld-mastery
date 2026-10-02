@@ -1,0 +1,92 @@
+@startuml
+
+title Notification System Class Diagram
+
+enum Severity {
+    LOW
+    MEDIUM
+    HIGH
+}
+
+interface Notification {
+    +format(): String
+}
+
+class RawNotification {
+    -message: String
+
+    +format(): String
+}
+
+abstract NotificationDecorator {
+    #wrapped: Notification
+}
+
+class TrimDecorator {
+    +format(): String
+}
+
+class HeadingDecorator {
+    +format(): String
+}
+
+class ShortDescriptionDecorator {
+    +format(): String
+}
+
+class SubjectDecorator {
+    +format(): String
+}
+
+class BodyFormatDecorator {
+    +format(): String
+}
+
+class TagDecorator {
+    +format(): String
+}
+
+abstract NotificationHandler {
+    #next: NotificationHandler
+
+    +setNext(notificationHandler: NotificationHandler): void
+    +handle(severity: Severity, Notification notification): void
+    +{Abstract} matches(severity: Severity): boolean
+    +{Abstract} send(formattedMessage: String): void
+    +{Abstract} decorate(notification: Notification): Notification
+}
+
+class PushHandler {
+
+}
+
+class SMSHandler {
+
+}
+
+class EmailHandler {
+
+}
+
+class NotificationService {
+    -firstHandler: NotificationHandler
+
+    +sendAlert(message: String, severity: Severity): void
+}
+
+PushHandler --|>  NotificationHandler
+SMSHandler --|> NotificationHandler
+EmailHandler --|> NotificationHandler
+TrimDecorator --|> NotificationDecorator
+TagDecorator --|> NotificationDecorator
+SubjectDecorator --|> NotificationDecorator
+BodyFormatDecorator --|> NotificationDecorator
+ShortDescriptionDecorator --|> NotificationDecorator
+HeadingDecorator --|> NotificationDecorator
+RawNotification ..|> Notification
+NotificationHandler o-- NotificationHandler
+NotificationDecorator ..|> Notification
+NotificationDecorator *-- Notification
+NotificationService *-- NotificationHandler
+
+@enduml
