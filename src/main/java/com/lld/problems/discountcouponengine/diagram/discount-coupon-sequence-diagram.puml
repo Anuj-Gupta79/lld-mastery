@@ -1,0 +1,41 @@
+@startuml
+title Discount Coupon Engine - calculate(cart) Sequence
+
+actor User
+participant DiscountManager as M
+participant Cart as C
+participant Result as R
+participant "DiscountHandler\n(1st coupon, head)" as H1
+participant DiscountStrategy as S
+participant "DiscountHandler\n(2nd coupon, last)" as H2
+
+User -> M : calculate(cart)
+M -> C : getOriginalTotal()
+C --> M : originalTotal
+M -> R : new Result(originalTotal)
+M -> C : getCoupons()
+C --> M : selectedCoupons (user's order)
+
+alt no coupons selected
+    M --> User : result (final = original)
+else coupons selected
+    M -> M : build chain: walk coupons last to first,\nnew DiscountHandler(coupon, strategies.get(type)),\nsetNext(handler built just before)
+    M -> H1 : handle(originalTotal, result)
+    H1 -> S : apply(runningPrice, coupon)
+    S --> H1 : discount
+
+    alt discount > runningPrice
+        H1 -> R : addSkippedCoupon(coupon)
+        note right of H1 : outgoing price = running price
+    else discount <= runningPrice
+        H1 -> R : addAppliedCoupon(coupon)
+        note right of H1 : outgoing price = running price - discount
+    end
+
+    H1 -> H2 : handle(outgoingPrice, result)
+    note over H2 : same steps as H1:\napply, skip-or-record
+    H2 -> R : setFinalAmount(outgoingPrice)
+    note right of H2 : next == null, so the last handler finishes
+    M --> User : result
+end
+@enduml

@@ -1,0 +1,124 @@
+@startuml
+title Discount Coupon Engine - Class Diagram
+
+enum DiscountType {
+    FLAT
+    PERCENTAGE
+    PERCENTAGE_WITH_CAP
+}
+
+class Item {
+    -itemId: String
+    -name: String
+    -price: double
+
+    +Item(name: String, price: double)
+    +getItemId(): String
+    +getName(): String
+    +getPrice(): double
+}
+
+class Coupon {
+    -couponId: String
+    -name: String
+    -discountType: DiscountType
+    -value: double
+    -cap: Double
+    -minCartValue: double
+
+    +Coupon(name: String, discountType: DiscountType, value: double, cap: Double, minCartValue: double)
+    +getCouponId(): String
+    +getName(): String
+    +getDiscountType(): DiscountType
+    +getValue(): double
+    +getCap(): Double
+    +getMinCartValue(): double
+    {static} -isValidCoupon(discountType: DiscountType, cap: Double, value: double): boolean
+}
+
+class Result {
+    -originalAmount: double
+    -finalAmount: double
+    -appliedCoupons: List<Coupon>
+    -skippedCoupons: List<Coupon>
+
+    +Result(originalAmount: double)
+    +addAppliedCoupon(coupon: Coupon): void
+    +addSkippedCoupon(coupon: Coupon): void
+    +setFinalAmount(amount: double): void
+    +getOriginalAmount(): double
+    +getFinalAmount(): double
+    +getSavedAmount(): double
+    +getAppliedCoupons(): List<Coupon>
+    +getSkippedCoupons(): List<Coupon>
+}
+
+class Cart {
+    -items: Map<String, Item>
+    -appliedCoupons: List<Coupon>
+
+    +Cart()
+    +addItem(item: Item): void
+    +removeItem(itemId: String): void
+    +addCoupon(coupon: Coupon): void
+    +removeCoupon(coupon: Coupon): void
+    +getOriginalTotal(): double
+    +getCoupons(): List<Coupon>
+    +getItems(): Map<String, Item>
+}
+
+class DiscountManager {
+    {static} -instance: DiscountManager
+    -coupons: ConcurrentHashMap<String, Coupon>
+    -strategies: Map<DiscountType, DiscountStrategy>
+
+    -DiscountManager()
+    {static} +getInstance(): DiscountManager
+    +registerCoupon(coupon: Coupon): void
+    +getEligibleCoupons(cart: Cart): List<Coupon>
+    +applyCoupon(cart: Cart, coupon: Coupon): void
+    +removeCoupon(cart: Cart, coupon: Coupon): void
+    +calculate(cart: Cart): Result
+    -isEligible(selectedCoupons: List<Coupon>, coupon: Coupon, totalPrice: double): boolean
+}
+
+class DiscountHandler {
+    -coupon: Coupon
+    -strategy: DiscountStrategy
+    -next: DiscountHandler
+
+    +DiscountHandler(coupon: Coupon, strategy: DiscountStrategy)
+    +handle(runningPrice: double, result: Result): void
+    +setNext(nextHandler: DiscountHandler): void
+}
+
+interface DiscountStrategy {
+    +apply(runningPrice: double, coupon: Coupon): double
+}
+
+class FlatDiscountStrategy
+class PercentageDiscountStrategy
+class PercentageWithCapDiscountStrategy
+
+FlatDiscountStrategy ..|> DiscountStrategy
+PercentageDiscountStrategy ..|> DiscountStrategy
+PercentageWithCapDiscountStrategy ..|> DiscountStrategy
+
+Cart "1" *-- "0..*" Item
+Cart "*" o-- "0..*" Coupon : selected
+Coupon "*" --> "1" DiscountType
+Result "*" o-- "0..*" Coupon : applied / skipped
+
+DiscountHandler "1" *-- "0..1" DiscountHandler : next
+DiscountHandler "*" o-- "1" Coupon
+DiscountHandler "*" o-- "1" DiscountStrategy
+
+DiscountManager "1" *-- "3" DiscountStrategy
+DiscountManager "1" o-- "0..*" Coupon : registry
+
+DiscountManager ..> Cart
+DiscountManager ..> Result
+DiscountManager ..> DiscountHandler
+DiscountHandler ..> Result
+DiscountStrategy ..> Coupon
+@enduml
