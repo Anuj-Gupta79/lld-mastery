@@ -1,0 +1,32 @@
+@startuml
+
+class Node<K, V> {
+    -key: K
+    -value: V
+    -next: Node<K, V>
+    -prev: Node<K, V>
+}
+
+class LRUCache<K, V> {
+    -capacity: int
+    -nodes: Map<K, Node<K, V>>
+    -head: Node<K, V>
+    -tail: Node<K, V>
+    -lock: ReentrantLock
+
+    +LRUCache(capacity: int)
+
+    +get(key: K): V
+    +put(key: K, value: V): void
+    +remove(key: K): boolean
+
+    -detach(node: Node<K, V>): void
+    -attachAtFront(node: Node<K,V>): void
+    -evictLeastRecentlyUsed(): void
+}
+
+LRUCache "1" *-- "0..*" Node : owns
+Node "1" --> "0..1" Node : prev
+Node "1" --> "0..1" Node : next
+
+@enduml
