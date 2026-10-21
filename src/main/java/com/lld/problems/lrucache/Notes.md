@@ -49,3 +49,34 @@ The system should:
 | get(A)   | A, B                | A, B     |
 | put(C,3) | C, A (B evicted)    | A, C     |
 | get(B)   | C, A (returns null) | A, C     |
+
+## Class Diagram
+
+```mermaid
+classDiagram
+    class Node~K, V~ {
+        -K key
+        -V value
+        -Node prev
+        -Node next
+    }
+
+    class LRUCache~K, V~ {
+        -int capacity
+        -Map~K, Node~ nodes
+        -Node head
+        -Node tail
+        -ReentrantLock lock
+        +LRUCache(int capacity)
+        +get(K key) V
+        +put(K key, V value) void
+        +remove(K key) boolean
+        -detach(Node node) void
+        -attachAtFront(Node node) void
+        -evictLeastRecentlyUsed() void
+    }
+
+    LRUCache "1" *-- "0..*" Node : owns
+    Node "1" --> "0..1" Node : prev
+    Node "1" --> "0..1" Node : next
+```
