@@ -1,0 +1,76 @@
+@startuml
+title Rate Limiter Class Diagram
+
+enum CallerType {
+    PAID
+    FREE
+}
+
+class LimitRule {
+    -maxRequests: int
+    -windowSeconds: int
+}
+
+class CallerState {
+    -callerId: String
+    -timestamps: Deque<Instant>
+    -lock: ReentrantLock
+}
+
+class Response {
+    -allowed: boolean
+    -message: String
+    -retryAfterSeconds: Long
+    +{static} allowed(): Response
+    +{static} rejected(message: String, retryAfterSeconds: long): Response
+}
+
+class RateLimiter {
+    -callers: ConcurrentHashMap<String, CallerState>
+    -rules: ConcurrentHashMap<CallerType, LimitRule>
+    -defaultRule: LimitRule
+    -clock: Clock
+    +process(callerId: String, callerType: CallerType): Response
+    +updateRule(callerType: CallerType, rule: LimitRule): void
+    +removeIdleCallers(): void
+}
+
+class IdleCallerRemover {
+    -limiter: RateLimiter
+    -intervalSeconds: long
+    -scheduler: ScheduledExecutorService
+    +start(): void
+    +stop(): void
+}
+
+RateLimiter "1" *-- "0..*" CallerState : callers
+RateLimiter "1" --> "0..*" LimitRule : rules
+RateLimiter "1" --> "1" LimitRule : defaultRule
+RateLimiter ..> CallerType
+RateLimiter ..> Response : creates
+IdleCallerRemover --> "1" RateLimiter : calls removeIdleCallers()
+
+note right of CallerState
+    Lock reason: one request changes only
+    its own caller's queue. Two different
+    callers never share data, so one lock
+    per caller is enough. In L15 every
+    operation changed the shared linked
+    list, so one lock covered everything.
+    Rule: the lock covers exactly the data
+    one operation changes.
+end note
+
+note bottom of RateLimiter
+    Clock is passed in the constructor so a
+    test can fix the time (1:04:59, 1:05:01).
+    Rule not found for a type: use defaultRule.
+end note
+
+note bottom of IdleCallerRemover
+    The remover owns the schedule and calls
+    limiter.removeIdleCallers(). The limiter
+    owns the cleaning logic and does not know
+    about the remover.
+end note
+@enduml
