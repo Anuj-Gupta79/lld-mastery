@@ -1,0 +1,72 @@
+@startuml
+title Job Processing: submit, fail, retry, success
+
+actor Client
+participant JobProcessor as P
+participant ClientLane as L
+participant ReadyQueue as Q
+participant JobWorker as W
+participant JobTask as T
+
+== Submit ==
+Client -> P : submit(clientId, content, task, priority, runAt)
+activate P
+note over P : lock
+P -> P : check activeKeys for JobKey(clientId, content)\n(no duplicate found)
+P -> P : create Job (INITIATED), save in jobs and activeKeys
+P -> L : addLast(job)
+P -> P : promoteHead(lane)
+note right of P : head of lane and lane not busy
+P -> Q : add(job)
+P -> P : jobReady.signal()
+note over P : unlock
+P --> Client : jobId
+deactivate P
+
+== Attempt 1 (fails) ==
+W -> P : takeNextJob()
+activate P
+note over P : lock
+P -> Q : pollDue(now)
+Q --> P : job
+P -> L : poll()
+P -> P : lane busy = true, status = PROCESSING
+note over P : unlock
+P --> W : job
+deactivate P
+W -> T : execute()
+T --> W : throws error
+note over W : retries left, so undo first
+W -> T : undo()
+W -> P : fail(job, error)
+activate P
+note over P : lock
+P -> P : retryCount = 1, status = INITIATED
+P -> L : addFirst(job)
+P -> P : lane busy = false
+P -> P : promoteHead(lane)
+P -> Q : add(job)
+P -> P : jobReady.signal()
+note over P : unlock
+deactivate P
+
+== Attempt 2 (succeeds) ==
+W -> P : takeNextJob()
+P --> W : job (same steps as attempt 1)
+W -> T : execute()
+T --> W : result
+W -> P : complete(job, result)
+activate P
+note over P : lock
+P -> P : status = COMPLETED, save result
+P -> P : remove JobKey from activeKeys
+P -> P : lane busy = false
+P -> P : promoteHead(lane)
+P -> P : jobReady.signal()
+note over P : unlock
+deactivate P
+
+== Later ==
+Client -> P : getJob(jobId)
+P --> Client : job (COMPLETED, result)
+@enduml

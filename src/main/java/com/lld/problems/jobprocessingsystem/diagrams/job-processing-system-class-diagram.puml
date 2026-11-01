@@ -1,0 +1,106 @@
+@startuml
+title Job Processing System
+
+enum JobStatus {
+    INITIATED
+    PROCESSING
+    COMPLETED
+    FAILED
+    CANCELLED
+}
+
+enum JobPriority {
+    HIGH
+    NORMAL
+    LOW
+    -rank: int
+}
+
+interface JobTask {
+    +execute(): String
+    +undo(): void
+}
+
+class Job {
+    {static} -MAX_RETRIES: int = 3
+    -id: String
+    -clientId: String
+    -content: String
+    -task: JobTask
+    -priority: JobPriority
+    -runAt: Instant
+    -sequence: long
+    -status: JobStatus
+    -retryCount: int
+    -result: String
+    -lastError: String
+    +hasRetriesLeft(): boolean
+}
+
+class JobKey {
+    -clientId: String
+    -content: String
+    +equals(o: Object): boolean
+    +hashCode(): int
+}
+
+class JobProcessor {
+    -jobs: Map<String, Job>
+    -activeKeys: Map<JobKey, String>
+    -lanes: Map<String, ClientLane>
+    -readyQueue: ReadyQueue
+    -workers: List<JobWorker>
+    -lock: ReentrantLock
+    -jobReady: Condition
+    -clock: Clock
+    -nextSequence: long
+    -stopped: boolean
+    +submit(clientId: String, content: String, task: JobTask, priority: JobPriority, runAt: Instant): String
+    +cancel(jobId: String): boolean
+    +getJob(jobId: String): Job
+    +shutdown(): void
+    +takeNextJob(): Job
+    +complete(job: Job, result: String): void
+    +fail(job: Job, error: String): void
+    -promoteHead(lane: ClientLane): void
+}
+
+class ClientLane {
+    -pending: Deque<Job>
+    -busy: boolean
+    +addLast(job: Job): void
+    +addFirst(job: Job): void
+    +remove(job: Job): void
+    +peek(): Job
+    +poll(): Job
+}
+
+class ReadyQueue {
+    -delayed: PriorityQueue<Job>
+    -ready: PriorityQueue<Job>
+    +add(job: Job): void
+    +remove(job: Job): void
+    +pollDue(now: Instant): Job
+    +nextRunAt(): Instant
+}
+
+class JobWorker implements Runnable {
+    -processor: JobProcessor
+    +run(): void
+}
+
+JobProcessor *-- "10" JobWorker
+JobProcessor *-- ReadyQueue
+JobProcessor *-- "0..*" ClientLane
+JobProcessor *-- "0..*" Job
+JobProcessor *-- "0..*" JobKey
+ClientLane --> "0..*" Job
+ReadyQueue --> "0..*" Job
+JobWorker --> JobProcessor
+JobWorker ..> Job
+Job o-- JobTask
+Job --> JobPriority
+Job --> JobStatus
+JobProcessor ..> JobPriority
+
+@enduml
