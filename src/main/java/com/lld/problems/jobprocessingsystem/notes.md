@@ -16,10 +16,6 @@
 
 **Java concepts used:** `Runnable`, `Thread`, `join`, `ReentrantLock`, `Condition` (`await`, `awaitNanos`, `signal`, `signalAll`), `PriorityQueue` with `Comparator`, `ArrayDeque`, `volatile`, and a `HashMap` key with `equals` and `hashCode`.
 
-**Responsibilities:** (keep the existing list)
-
-**Out of scope:** (keep the existing line)
-
 **Responsibilities**
 - Accept jobs from clients and return a job id immediately.
 - Run jobs in the background, at most 10 at the same time.
