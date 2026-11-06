@@ -1,0 +1,134 @@
+@startuml PaymentGateway
+title Payment Gateway Class Diagram
+
+enum PaymentStatus {
+    PENDING
+    SUCCESS
+    FAILED
+    REFUNDED
+}
+
+enum PaymentMethod {
+    CARD
+    UPI
+}
+
+enum RefundReason {
+    ORDER_FAILED
+    CUSTOMER_CANCEL
+}
+
+class Account {
+    -accountId:String
+    -accountNumber: String
+    -balance: long
+
+    +debit(amount: long): void
+    +credit(amount: long): void
+}
+
+class Customer {
+    -customerId: String
+    -account: Account
+}
+
+class Merchant {
+    -merchantId: String
+    -account: Account
+}
+
+class PaymentProvider{
+    -name:String
+    -active: boolean
+
+    +charge(amount: long): PaymentStatus
+}
+
+class Transaction {
+    -transactionId: String
+    -customer: Customer
+    -merchant: Merchant
+    -orderId: String
+    -amount: long
+    -method: PaymentMethod
+    -status: PaymentStatus
+    -createdAt: LocalDateTime
+    -paidAt: LocalDateTime
+    -failureReason: String
+    -refundedAmount: long
+    -refundTime: LocalDateTime
+}
+
+class Response {
+    -transactionId: String
+    -status: PaymentStatus
+    -message: String
+    -amount: long
+    -refundAmount: long
+    -refundTime: LocalDateTime
+}
+
+class FraudChecker {
+    -recentRequests: Map<String, Deque<LocalDateTime>>
+
+    +check(customerId: String, amount: long): void
+}
+
+class TransactionKey {
+    -customerId: String
+    -orderId: String
+}
+
+interface PaymentStrategy {
+    +pay(transaction: Transaction): PaymentStatus
+}
+
+abstract class ProviderBasedStrategy {
+    -providers: List<PaymentProvider>
+}
+
+class CardStrategy {
+}
+
+class UPIStrategy {
+}
+
+class PaymentGateway{
+    -transactions: ConcurrentHashMap<String, Transaction>
+    -transactionKeys: ConcurrentHashMap<TransactionKey, String>
+    -strategies: Map<PaymentMethod, PaymentStrategy>
+    -fraudChecker: FraudChecker
+    -lock: ReentrantLock
+
+    +process(customer: Customer, merchant: Merchant, orderId: String, amount: long, method: PaymentMethod): Response
+    +refund(transactionId: String, reason: RefundReason): Response
+    +getTransaction(transactionId: String): Transaction
+    +handleWebhook(transactionId: String, result: PaymentStatus): void
+}
+
+Customer o-- Account
+Merchant o-- Account
+Transaction o-- Customer
+Transaction o-- Merchant
+Transaction --> PaymentMethod
+Transaction --> PaymentStatus
+Response --> PaymentStatus
+PaymentProvider ..> PaymentStatus
+ProviderBasedStrategy ..|> PaymentStrategy
+CardStrategy --|> ProviderBasedStrategy
+UPIStrategy --|> ProviderBasedStrategy
+CardStrategy *-- PaymentProvider
+UPIStrategy *-- PaymentProvider
+PaymentStrategy ..> Transaction
+PaymentGateway *-- Transaction
+PaymentGateway *-- TransactionKey
+PaymentGateway *-- PaymentStrategy
+PaymentGateway *-- FraudChecker
+PaymentGateway ..> PaymentMethod
+PaymentGateway ..> Response
+PaymentGateway ..> Customer
+PaymentGateway ..> Merchant
+PaymentGateway ..> PaymentStatus
+PaymentGateway ..> RefundReason
+
+@enduml

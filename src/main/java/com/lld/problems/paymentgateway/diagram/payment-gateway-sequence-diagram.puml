@@ -1,0 +1,94 @@
+@startuml PaymentGateway
+title Payment Gateway Sequence Diagram
+
+actor Main
+participant PaymentGateway as GW
+participant FraudChecker as FC
+participant "PaymentStrategy\n(Card or UPI)" as ST
+participant PaymentProvider as PP
+participant "Customer\nAccount" as CA
+participant "Merchant\nAccount" as MA
+
+== 1. process(customer, merchant, orderId, amount, method) ==
+Main -> GW: process(...)
+GW -> GW: lock.lock()
+GW -> GW: key = TransactionKey(customerId, orderId)
+GW -> GW: old = transactionKeys.get(key)
+
+alt old exists AND old status is PENDING or SUCCESS
+    GW -> GW: lock.unlock()
+    GW --> Main: Response(FAILED, "duplicate request")
+else no old, or old status is FAILED
+    GW -> GW: create Transaction (PENDING)
+    GW -> GW: transactions.put(id, txn)\ntransactionKeys.put(key, id)
+    GW -> GW: lock.unlock()
+
+    GW -> FC: check(customerId, amount)
+    alt fraud rule fails
+        FC --> GW: throws FraudCheckException(reason)
+        GW -> GW: txn = FAILED, failureReason = reason
+        GW --> Main: Response(FAILED, reason)
+    else passes
+        GW -> CA: balance >= amount ?
+        alt not enough balance
+            GW -> GW: txn = FAILED, "insufficient balance"
+            GW --> Main: Response(FAILED, reason)
+        else enough balance
+            GW -> ST: pay(txn)   // strategy picked by method
+            ST -> PP: charge(amount)   // first active provider
+            PP --> ST: SUCCESS / FAILED / PENDING
+            ST --> GW: status
+
+            alt status = SUCCESS (card)
+                GW -> CA: debit(amount)
+                GW -> MA: credit(amount)
+                GW -> GW: txn = SUCCESS, paidAt = now
+                GW --> Main: Response(SUCCESS, amount paid)
+            else status = FAILED
+                GW -> GW: txn = FAILED, failureReason
+                GW --> Main: Response(FAILED, reason)
+            else status = PENDING (UPI)
+                GW --> Main: Response(PENDING, "waiting for UPI")
+            end
+        end
+    end
+end
+
+== 2. handleWebhook(transactionId, result)  (UPI late answer) ==
+Main -> GW: handleWebhook(transactionId, result)
+GW -> GW: lock.lock()
+GW -> GW: txn = transactions.get(transactionId)
+alt txn status is not PENDING
+    GW -> GW: ignore (same webhook twice changes nothing)
+else txn status is PENDING
+    alt result = SUCCESS
+        GW -> CA: debit(amount)
+        GW -> MA: credit(amount)
+        GW -> GW: txn = SUCCESS, paidAt = now
+        note right: if debit fails (not enough balance),\ntxn = FAILED with reason
+    else result = FAILED
+        GW -> GW: txn = FAILED, failureReason
+    end
+end
+GW -> GW: lock.unlock()
+
+== 3. refund(transactionId, reason) ==
+Main -> GW: refund(transactionId, reason)
+GW -> GW: lock.lock()
+GW -> GW: txn = transactions.get(transactionId)
+alt txn status is not SUCCESS (not paid, or already refunded)
+    GW -> GW: lock.unlock()
+    GW --> Main: Response(rejected, reason)
+else txn status is SUCCESS
+    alt reason = ORDER_FAILED
+        GW -> GW: refundAmount = full amount
+    else reason = CUSTOMER_CANCEL
+        GW -> GW: now <= paidAt + 24h ? full amount : half amount
+    end
+    GW -> MA: debit(refundAmount)
+    GW -> CA: credit(refundAmount)
+    GW -> GW: txn = REFUNDED, refundedAmount,\nrefundTime = now + 2 days
+    GW -> GW: lock.unlock()
+    GW --> Main: Response(REFUNDED, refundAmount, refundTime)
+end
+@enduml
