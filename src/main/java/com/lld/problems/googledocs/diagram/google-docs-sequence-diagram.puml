@@ -1,0 +1,83 @@
+@startuml submit
+title Document.submit(op, engine)
+
+actor Caller
+participant Document
+participant RoleType
+participant "engine : OperationEngine" as Engine
+participant "op : Operation" as Op
+participant "applied : Operation" as Applied
+participant "fixed : Operation" as Fixed
+participant EditHistory
+participant DocumentListener as Listener
+
+Caller -> Document : submit(op, engine)
+activate Document
+note over Document : synchronized (one edit at a time)
+
+== checkCanEdit ==
+Document -> RoleType : members.get(userId).canEdit()
+RoleType --> Document : true / false
+alt user is not a member
+    Document --> Caller : throw UserNotFoundException
+else role cannot edit
+    Document --> Caller : throw PermissionDeniedException
+end
+
+== applyOperation ==
+Document -> Document : check 0 <= baseRevision <= log size
+Document -> Document : pending = log.subList(baseRevision, size)
+
+Document -> Engine : transform(op, pending)
+activate Engine
+loop each applied operation in pending (oldest first)
+    Engine -> Op : transformAgainst(applied)
+    Op -> Applied : shift(start, true) and shift(end, false)
+    Applied --> Op : new numbers
+    Op --> Engine : new operation (null if the range is empty)
+end
+Engine --> Document : fixed op (or null)
+deactivate Engine
+
+alt fixed is null
+    Document --> Caller : ignored (same text deleted twice)
+end
+
+Document -> Fixed : capture(document)
+Fixed -> Document : getText(start, end)  (delete only)
+Document --> Fixed : the real text
+Fixed --> Document : captured op
+
+Document -> Fixed : apply(document)
+Fixed -> Document : insertText / deleteText / applyStyle
+Document --> Fixed : text or styles changed
+
+Document -> Document : log.add(fixed), revision++
+
+loop each cursor, comment, style span
+    Document -> Fixed : shift(position, moveOnTie)
+    Fixed --> Document : new position
+end
+Document -> Document : remove style spans that became empty
+
+Document -> Document : versions.add(new Version(revision, spans copy, content))
+
+loop each listener
+    Document -> Listener : onChange(documentId, fixed)
+end
+
+== back in submit ==
+Document -> Fixed : inverse().withBase(revision)
+Fixed --> Document : undo operation
+Document -> EditHistory : pushUndo(undo operation)
+Document -> EditHistory : clearRedo()
+
+Document --> Caller : done
+deactivate Document
+
+note over Document
+undo and redo use the same applyOperation steps.
+They pop from one stack and push the inverse to the other.
+They do not call clearRedo().
+end note
+@enduml

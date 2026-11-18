@@ -1,0 +1,194 @@
+@startuml Google Docs
+title Google Docs Class Diagram
+
+enum RoleType {
+    OWNER
+    EDITOR
+    COMMENTER
+    READER
+
+    +canRead(): boolean
+    +canComment(): boolean
+    +canEdit(): boolean
+    +canManage(): boolean
+}
+
+enum TextStyle {
+    BOLD
+    ITALIC
+    UNDERLINE
+}
+
+abstract Operation {
+    -userId: String
+    -baseRevision: int
+
+    +capture(document: Document): Operation
+    +transformAgainst(applied: Operation): Operation
+    +apply(document: Document): void
+    +shift(position: int, moveOnTie: boolean): int
+    +withBase(revision: int): Operation
+    +inverse(): Operation
+}
+
+class InsertOperation {
+    -position: int
+    -text: String
+}
+
+class DeleteOperation {
+    -start: int
+    -end: int
+    -text: String
+}
+
+class FormatOperation {
+    -start: int
+    -end: int
+    -style: TextStyle
+    -on: boolean
+}
+
+class OperationEngine {
+    +transform(op: Operation, appliedOperations: List<Operation>): Operation
+}
+
+class Document {
+    -documentId: String
+    -documentName: String
+    -revision: int
+    -ownerId: String
+    -content: StringBuilder
+    -appliedOperations: List<Operation>
+    -spans: List<StyleSpan>
+    -members: Map<String, RoleType>
+    -cursors: Map<String, Cursor>
+    -comments: List<Comment>
+    -versions: List<Version>
+    -histories: Map<String, EditHistory>
+    -listeners: List<DocumentListener>
+
+    +submit(op: Operation, engine: OperationEngine): void
+    +undo(userId: String, engine: OperationEngine): void
+    +redo(userId: String, engine: OperationEngine): void
+    +restoreVersion(userId: String, number: int, engine: OperationEngine): void
+    +addMember(userId: String, role: RoleType): void
+    +removeMember(userId: String): void
+    +addComment(comment: Comment): void
+    +addListener(listener: DocumentListener): void
+    +removeListener(listener: DocumentListener): void
+    +moveCursor(userId: String, position: int): void
+    +removeCursor(userId: String): void
+    +insertText(position: int, text: String): void
+    +deleteText(start: int, end: int): void
+    +getText(start: int, end: int): String
+    +applyStyle(start: int, end: int, style: TextStyle, on: boolean): void
+    +render(): String
+}
+
+class StyleSpan {
+    -start: int
+    -end: int
+    -style: TextStyle
+
+    +copy(): StyleSpan
+}
+
+class Comment {
+    -commentId: String
+    -userId: String
+    -start: int
+    -end: int
+    -text: String
+    -createdAt: LocalDateTime
+}
+
+class Cursor {
+    -userId: String
+    -position: int
+}
+
+class Version {
+    -number: int
+    -spans: List<StyleSpan>
+    -content: String
+    -authorId: String
+    -createdAt: LocalDateTime
+}
+
+class EditHistory {
+    -undoStack: Deque<Operation>
+    -redoStack: Deque<Operation>
+
+    +pushUndo(op: Operation): void
+    +popUndo(): Operation
+    +pushRedo(op: Operation): void
+    +popRedo(): Operation
+    +canUndo(): boolean
+    +canRedo(): boolean
+    +clearRedo(): void
+}
+
+interface DocumentListener {
+    +onChange(docId: String, op: Operation): void
+}
+
+class User {
+    -userId: String
+    -name: String
+}
+
+class GoogleDocs {
+    -users: Map<String, User>
+    -documents: Map<String, Document>
+    -engine: OperationEngine
+
+    +registerUser(user: User): void
+    +removeUser(userId: String): void
+    +createDocument(ownerId: String, name: String): Document
+    +uploadDocument(ownerId: String, text: String, name: String): Document
+    +getDocument(documentId: String): Document
+    +deleteDocument(userId: String, documentId: String): void
+    +shareDocument(ownerId: String, documentId: String, userId: String, role: RoleType): void
+    +edit(documentId: String, op: Operation): void
+    +undo(documentId: String, userId: String): void
+    +redo(documentId: String, userId: String): void
+    +restoreVersion(documentId: String, userId: String, number: int): void
+}
+
+InsertOperation --|> Operation
+DeleteOperation --|> Operation
+FormatOperation --|> Operation
+User ..|> DocumentListener
+
+FormatOperation --> TextStyle
+StyleSpan --> TextStyle
+Document --> RoleType
+
+GoogleDocs *-- Document
+GoogleDocs *-- OperationEngine
+GoogleDocs o-- User
+Document *-- EditHistory
+Document *-- Version
+Document *-- StyleSpan
+Document *-- Cursor
+Document o-- Comment
+Document o-- Operation
+Document o-- DocumentListener
+Version *-- StyleSpan
+EditHistory o-- Operation
+
+GoogleDocs ..> RoleType
+GoogleDocs ..> InsertOperation
+Document ..> OperationEngine
+Document ..> TextStyle
+Document ..> InsertOperation
+Document ..> DeleteOperation
+Document ..> FormatOperation
+Operation ..> Document
+InsertOperation ..> DeleteOperation
+DeleteOperation ..> InsertOperation
+OperationEngine ..> Operation
+DocumentListener ..> Operation
+
+@enduml
